@@ -49,7 +49,7 @@ function LoginForm() {
       // 1. 发起正式的 NestJS 接口请求
       // 注意：真实场景下后端会在响应头中 Set-Cookie 写入 httpOnly 的 access_token
       // 同时返回用户信息与权限列表
-      const response: any = await api.post('/auth/login', values);
+      const response: any = await api.post('/auth/admin/login', values);
       
       const userProfile: UserProfile = response.user;
       const permissions: string[] = response.permissions || [];
