@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { Table, Button, Input, Space, Tag, Modal, Form, Select, InputNumber, Switch, message } from 'antd';
-import { Plus, Search, Key, ShieldAlert, Cpu, RefreshCw } from 'lucide-react';
+import { Plus, Search, ShieldAlert, Cpu } from 'lucide-react';
 import { useTableQuery } from '@/hooks/useTableQuery';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
+import { api } from '@/lib/axios';
 
 interface LicenseCode {
   id: string;
@@ -17,27 +18,28 @@ interface LicenseCode {
   expiresAt: string;
 }
 
-const mockCodes: LicenseCode[] = [
-  { id: '1', code: 'SEC-8902A39E1', maxActivations: 1, currentActivations: 1, rateLimit: 5, deviceId: 'DEV-IP-182.20.10.4', status: 'active', expiresAt: '2026-12-31' },
-  { id: '2', code: 'SEC-1093DF821', maxActivations: 5, currentActivations: 2, rateLimit: 10, deviceId: 'DEV-IP-92.100.8.12', status: 'active', expiresAt: '2027-06-01' },
-  { id: '3', code: 'SEC-7762A309F', maxActivations: 1, currentActivations: 0, rateLimit: 2, deviceId: null, status: 'active', expiresAt: '2026-08-15' },
-  { id: '4', code: 'SEC-expired-99', maxActivations: 1, currentActivations: 1, rateLimit: 1, deviceId: 'DEV-IP-55.88.92.1', status: 'disabled', expiresAt: '2026-05-20' },
-];
-
 export default function CodePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
+  // 定义真实数据获取器
   const fetchCodes = async (params: { page: number; limit: number; code?: string }) => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    let filtered = [...mockCodes];
-    if (params.code) {
-      filtered = filtered.filter((c) => c.code.toLowerCase().includes(params.code!.toLowerCase()));
+    try {
+      const response: any = await api.get('/register-codes', {
+        params: {
+          page: params.page,
+          limit: params.limit,
+          code: params.code,
+        },
+      });
+      return {
+        list: response.list || [],
+        total: response.total || 0,
+      };
+    } catch (err: any) {
+      message.error(err.message || '获取注册激活码列表失败');
+      return { list: [], total: 0 };
     }
-    const total = filtered.length;
-    const start = (params.page - 1) * params.limit;
-    const list = filtered.slice(start, start + params.limit);
-    return { list, total };
   };
 
   const { tableProps, filters, setFilters, refetch } = useTableQuery<LicenseCode>({
@@ -49,11 +51,20 @@ export default function CodePage() {
     setFilters({ code: val });
   };
 
-  const handleGenerate = (values: any) => {
-    message.success(`成功批量生成 ${values.count} 个注册码！`);
-    setIsModalOpen(false);
-    form.resetFields();
-    refetch();
+  const handleGenerate = async (values: any) => {
+    try {
+      await api.post('/register-codes/generate', {
+        count: values.count,
+        maxActivations: values.maxActivations,
+        rateLimit: values.rateLimit,
+      });
+      message.success(`成功批量生成 ${values.count} 个注册码！`);
+      setIsModalOpen(false);
+      form.resetFields();
+      refetch();
+    } catch (err: any) {
+      message.error(err.message || '批量生成注册码失败');
+    }
   };
 
   const handleRevoke = (id: string, code: string) => {
@@ -63,16 +74,27 @@ export default function CodePage() {
       content: `您正在作废并解绑激活码 [ ${code} ]，解绑后绑定的端侧设备将立即掉线并清空 Redis 占用缓存。是否确认？`,
       okText: '确定作废',
       okType: 'danger',
-      onOk: () => {
-        message.success(`成功停用作废激活码: ${code}`);
-        refetch();
+      onOk: async () => {
+        try {
+          await api.delete(`/register-codes/${id}`);
+          message.success(`成功停用作废激活码: ${code}`);
+          refetch();
+        } catch (err: any) {
+          message.error(err.message || '作废激活码失败');
+        }
       },
     });
   };
 
-  const handleStatusChange = (record: LicenseCode, checked: boolean) => {
-    message.success(`激活码 ${record.code} 状态已更新为: ${checked ? '启用' : '禁用'}`);
-    refetch();
+  const handleStatusChange = async (record: LicenseCode, checked: boolean) => {
+    try {
+      const targetStatus = checked ? 'active' : 'disabled';
+      await api.patch(`/register-codes/${record.id}/status`, { status: targetStatus });
+      message.success(`激活码 ${record.code} 状态已更新为: ${checked ? '启用' : '禁用'}`);
+      refetch();
+    } catch (err: any) {
+      message.error(err.message || '更新激活码状态失败');
+    }
   };
 
   const columns = [
@@ -136,7 +158,6 @@ export default function CodePage() {
       key: 'action',
       render: (_: any, record: LicenseCode) => (
         <Space size="middle">
-          <Button type="link" size="small" className="font-semibold p-0">参数配置</Button>
           <PermissionGuard permission="code:delete">
             <Button
               type="link"

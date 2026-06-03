@@ -2,55 +2,61 @@
 
 import React, { useState } from 'react';
 import { Table, Button, Input, Space, Tag, Modal, Form, Select, message } from 'antd';
-import { Plus, Search, UserMinus, UserCheck, ShieldAlert } from 'lucide-react';
+import { Plus, Search, ShieldAlert } from 'lucide-react';
 import { useTableQuery } from '@/hooks/useTableQuery';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
+import { api } from '@/lib/axios';
 
 interface UserItem {
   id: string;
   username: string;
   nickname: string;
   email: string;
-  role: string;
-  status: 'active' | 'inactive';
+  role: {
+    id: string;
+    name: string;
+    description?: string;
+  } | null;
+  status: number;
   createdAt: string;
 }
 
-// 模拟 API 数据源
-const mockUsers: UserItem[] = [
-  { id: '1', username: 'admin', nickname: '系统超级管理员', email: 'admin@xbnest.com', role: '超级管理员', status: 'active', createdAt: '2026-05-01' },
-  { id: '2', username: 'operator', nickname: '运营维护专员', email: 'op@xbnest.com', role: '运营专员', status: 'active', createdAt: '2026-05-15' },
-  { id: '3', username: 'tester_01', nickname: '灰度测试账户A', email: 'test01@xbnest.com', role: '测试人员', status: 'active', createdAt: '2026-06-01' },
-  { id: '4', username: 'black_list_user', nickname: '异常限流测试机', email: 'block@xbnest.com', role: '测试人员', status: 'inactive', createdAt: '2026-06-02' },
-];
-
 export default function UserPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
   const [form] = Form.useForm();
 
-  // 定义 Mock 数据获取器
-  const fetchUsers = async (params: { page: number; limit: number; username?: string }) => {
-    // 模拟网络延迟
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    let filtered = [...mockUsers];
-    if (params.username) {
-      filtered = filtered.filter(
-        (u) =>
-          u.username.includes(params.username!) ||
-          u.nickname.includes(params.username!)
-      );
+  // 获取真实角色列表
+  const fetchRoles = async () => {
+    try {
+      const res: any = await api.get('/users/roles');
+      setRoles(res || []);
+    } catch (err: any) {
+      message.error(err.message || '获取可分配角色列表失败');
     }
-
-    const total = filtered.length;
-    // 简易模拟分页
-    const start = (params.page - 1) * params.limit;
-    const list = filtered.slice(start, start + params.limit);
-
-    return { list, total };
   };
 
-  // 使用封装的高级 useTableQuery 自动关联分页与缓存
+  // 定义真实数据获取器
+  const fetchUsers = async (params: { page: number; limit: number; username?: string }) => {
+    try {
+      const response: any = await api.get('/users', {
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.username,
+        },
+      });
+      return {
+        list: response.list || [],
+        total: response.total || 0,
+      };
+    } catch (err: any) {
+      message.error(err.message || '获取用户列表失败');
+      return { list: [], total: 0 };
+    }
+  };
+
+  // 关联分页组件与查询
   const { tableProps, filters, setFilters, refetch } = useTableQuery<UserItem>({
     queryKey: ['users'],
     fetchFn: fetchUsers,
@@ -60,11 +66,21 @@ export default function UserPage() {
     setFilters({ username: val });
   };
 
-  const handleAddUser = (values: any) => {
-    message.success(`创建用户成功: ${values.nickname}`);
-    setIsModalOpen(false);
-    form.resetFields();
-    refetch();
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    fetchRoles();
+  };
+
+  const handleAddUser = async (values: any) => {
+    try {
+      await api.post('/users', values);
+      message.success(`创建用户成功: ${values.nickname || values.username}`);
+      setIsModalOpen(false);
+      form.resetFields();
+      refetch();
+    } catch (err: any) {
+      message.error(err.message || '创建用户失败');
+    }
   };
 
   const handleDeleteUser = (id: string, name: string) => {
@@ -75,9 +91,14 @@ export default function UserPage() {
       okText: '确定删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => {
-        message.success(`成功删除用户: ${name}`);
-        refetch();
+      onOk: async () => {
+        try {
+          await api.delete(`/users/${id}`);
+          message.success(`成功删除用户: ${name}`);
+          refetch();
+        } catch (err: any) {
+          message.error(err.message || '删除用户失败');
+        }
       },
     });
   };
@@ -93,19 +114,21 @@ export default function UserPage() {
       title: '昵称',
       dataIndex: 'nickname',
       key: 'nickname',
+      render: (text: string) => text || '-',
     },
     {
       title: '电子邮箱',
       dataIndex: 'email',
       key: 'email',
+      render: (text: string) => text || '-',
     },
     {
       title: '所属角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string) => (
-        <Tag color={role === '超级管理员' ? 'volcano' : 'geekblue'} className="font-semibold">
-          {role}
+      render: (role: any) => (
+        <Tag color={role?.name === '超级管理员' ? 'volcano' : 'geekblue'} className="font-semibold">
+          {role?.name || '未分配角色'}
         </Tag>
       ),
     },
@@ -113,10 +136,10 @@ export default function UserPage() {
       title: '账号状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: 'active' | 'inactive') => (
+      render: (status: number) => (
         <span className="inline-flex items-center gap-1.5 font-semibold text-xs">
-          <span className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-          {status === 'active' ? '正常激活' : '异常冻结'}
+          <span className={`w-1.5 h-1.5 rounded-full ${status === 1 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+          {status === 1 ? '正常激活' : '异常冻结'}
         </span>
       ),
     },
@@ -124,14 +147,13 @@ export default function UserPage() {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
     },
     {
       title: '操作选项',
       key: 'action',
       render: (_: any, record: UserItem) => (
         <Space size="middle">
-          <Button type="link" size="small" className="font-semibold p-0">编辑</Button>
-          {/* 使用 PermissionGuard 包裹高危删除按钮，权限码为 'user:delete' */}
           <PermissionGuard
             permission="user:delete"
             fallback={<span className="text-[10px] text-slate-400 italic">无权限删除</span>}
@@ -141,7 +163,7 @@ export default function UserPage() {
               danger
               size="small"
               className="font-semibold p-0"
-              onClick={() => handleDeleteUser(record.id, record.nickname)}
+              onClick={() => handleDeleteUser(record.id, record.nickname || record.username)}
             >
               删除
             </Button>
@@ -166,7 +188,7 @@ export default function UserPage() {
           <Button
             type="primary"
             className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold text-xs flex items-center gap-1 h-9"
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenModal}
           >
             <Plus className="w-4 h-4" />
             新建用户
@@ -211,9 +233,12 @@ export default function UserPage() {
         destroyOnClose
         className="dark:bg-zinc-900"
       >
-        <Form form={form} layout="vertical" onFinish={handleAddUser} className="mt-4">
+        <Form form={form} layout="vertical" onFinish={handleAddUser} className="mt-4" initialValues={{ password: '123456' }}>
           <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
             <Input placeholder="建议英文或拼音，如 zhangsan" />
+          </Form.Item>
+          <Form.Item name="password" label="初始登录密码" rules={[{ required: true, message: '请设置初始登录密码' }]}>
+            <Input.Password placeholder="默认密码为 123456" />
           </Form.Item>
           <Form.Item name="nickname" label="真实昵称" rules={[{ required: true, message: '请输入用户昵称' }]}>
             <Input placeholder="如 张三" />
@@ -221,11 +246,11 @@ export default function UserPage() {
           <Form.Item name="email" label="电子邮箱" rules={[{ required: true, type: 'email', message: '请输入有效的邮箱' }]}>
             <Input placeholder="如 zhangsan@xbnest.com" />
           </Form.Item>
-          <Form.Item name="role" label="选择角色" rules={[{ required: true, message: '请分配角色' }]}>
+          <Form.Item name="roleId" label="选择分配角色" rules={[{ required: true, message: '请分配角色' }]}>
             <Select placeholder="选择系统角色分配">
-              <Select.Option value="超级管理员">超级管理员</Select.Option>
-              <Select.Option value="运营专员">运营专员</Select.Option>
-              <Select.Option value="测试人员">测试人员</Select.Option>
+              {roles.map((r: any) => (
+                <Select.Option key={r.id} value={r.id}>{r.name}</Select.Option>
+              ))}
             </Select>
           </Form.Item>
           <div className="flex justify-end gap-2 pt-3">

@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import Cookies from 'js-cookie';
 
 interface MenuItem {
   name: string;
@@ -75,6 +76,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // 退出登录逻辑
   const handleLogout = () => {
+    Cookies.remove('access_token');
+    Cookies.remove('refresh_token');
     clearAuth();
     toast.success('退出登录成功');
     router.push('/login');
