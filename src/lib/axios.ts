@@ -57,8 +57,14 @@ api.interceptors.response.use(
   async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // 如果响应状态码是 401 且该请求还没有重试过
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 排除登录/登出等基础认证请求，让这些请求的 401 报错直接抛回给表单页面处理
+    const isAuthRequest = originalRequest.url?.includes('/auth/admin/login') || 
+                          originalRequest.url?.includes('/auth/user/license-login') ||
+                          originalRequest.url?.includes('/auth/admin/logout') ||
+                          originalRequest.url?.includes('/auth/user/logout');
+
+    // 如果响应状态码是 401 且该请求还没有重试过，且不是认证相关的请求
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       // 如果已经在刷新 Token 了，把当前请求放入队列挂起
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
