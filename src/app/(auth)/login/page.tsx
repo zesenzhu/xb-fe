@@ -58,7 +58,7 @@ function LoginForm() {
       toast.success('登录成功，欢迎回来！');
       
       // 成功后重定向
-      const redirectUrl = searchParams.get('redirect') || '/dashboard';
+      const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
       router.push(redirectUrl);
     } catch (error: any) {
       // 2. 如果后端接口尚未部署或报错，系统将优雅降级到提示，并提供极速 Mock 测试通道
@@ -111,7 +111,7 @@ function LoginForm() {
       setAuth(mockUser, mockPermissions);
       toast.success(`一键快捷登录成功！当前身份：${mockUser.nickname}`);
       
-      const redirectUrl = searchParams.get('redirect') || '/dashboard';
+      const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
       router.push(redirectUrl);
       setLoading(false);
     }, 800);

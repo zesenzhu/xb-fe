@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import Cookies from 'js-cookie';
+import { api } from '@/lib/axios';
 
 interface MenuItem {
   name: string;
@@ -43,13 +44,13 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { name: '系统仪表盘', path: '/dashboard', icon: LayoutDashboard },
-  { name: '用户管理', path: '/user', icon: Users, permission: 'user:list' },
-  { name: '角色权限', path: '/role', icon: ShieldAlert, permission: 'role:list' },
-  { name: '注册激活码', path: '/code', icon: KeyRound, permission: 'code:list' },
-  { name: '脚本运行日志', path: '/log', icon: FileCode2, permission: 'log:list' },
-  { name: 'MQTT设备监控', path: '/device', icon: Cpu, permission: 'device:list' },
-  { name: 'AI Agent控制台', path: '/ai', icon: Bot, permission: 'ai:list' },
+  { name: '系统仪表盘', path: '/admin/dashboard', icon: LayoutDashboard },
+  { name: '用户管理', path: '/admin/user', icon: Users, permission: 'user:list' },
+  { name: '角色权限', path: '/admin/role', icon: ShieldAlert, permission: 'role:list' },
+  { name: '注册激活码', path: '/admin/code', icon: KeyRound, permission: 'code:list' },
+  { name: '脚本运行日志', path: '/admin/log', icon: FileCode2, permission: 'log:list' },
+  { name: 'MQTT设备监控', path: '/admin/device', icon: Cpu, permission: 'device:list' },
+  { name: 'AI Agent控制台', path: '/admin/ai', icon: Bot, permission: 'ai:list' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -75,12 +76,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // 退出登录逻辑
-  const handleLogout = () => {
-    Cookies.remove('access_token');
-    Cookies.remove('refresh_token');
-    clearAuth();
-    toast.success('退出登录成功');
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      // 1. 物理调用后端登出接口清除 httpOnly Cookies 凭证
+      await api.post('/auth/admin/logout');
+    } catch (e) {
+      console.warn('调用后端退出登录接口失败，降级进行本地清理', e);
+    } finally {
+      // 2. 强制清除本地状态和 Cookie
+      Cookies.remove('access_token');
+      Cookies.remove('refresh_token');
+      clearAuth();
+      toast.success('退出登录成功');
+      router.push('/login');
+    }
   };
 
   // 根据当前路径与权限过滤菜单
@@ -95,7 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // 根据当前 URL 生成多级面包屑数据
   const generateBreadcrumbs = () => {
     const paths = pathname.split('/').filter(Boolean);
-    const breadcrumbs = [{ name: '首页', path: '/dashboard' }];
+    const breadcrumbs = [{ name: '首页', path: '/admin/dashboard' }];
     
     let currentPath = '';
     paths.forEach((p) => {
@@ -123,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         {/* LOGO 区域 */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-zinc-800/50">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold tracking-wider overflow-hidden">
+          <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold tracking-wider overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center shrink-0">
               <span className="text-white dark:text-black font-extrabold text-sm">XB</span>
             </div>

@@ -3,12 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // 1. 管理员后台受保护路由 (校验 access_token)
 const adminProtectedPaths = [
-  '/dashboard',
-  '/role',
-  '/code',
-  '/log',
-  '/device',
-  '/ai',
+  '/admin',
 ];
 
 // 2. 对外用户端受保护路由 (校验 user_access_token)
@@ -31,15 +26,7 @@ export function middleware(request: NextRequest) {
   // -------------------------------------------------------------
   // 一、拦截管理员后台受保护路由
   // -------------------------------------------------------------
-  const isAdminProtected =
-    adminProtectedPaths.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`)
-    ) ||
-    // 特殊处理：精确匹配 /user 以及 /user/ 目录下非普通用户的路径
-    pathname === '/user' ||
-    (pathname.startsWith('/user/') &&
-      !userProtectedPaths.some((p) => pathname.startsWith(p)) &&
-      pathname !== '/user/login');
+  const isAdminProtected = pathname === '/admin' || pathname.startsWith('/admin/');
 
   if (isAdminProtected) {
     if (!adminAccessToken && !adminRefreshToken) {
@@ -70,7 +57,7 @@ export function middleware(request: NextRequest) {
   // 管理员登录拦截
   if (pathname === '/login' || pathname === '/register') {
     if (adminAccessToken) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
   }
 
@@ -85,7 +72,7 @@ export function middleware(request: NextRequest) {
   // 四、根路径重定向
   // -------------------------------------------------------------
   if (pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   }
 
   return NextResponse.next();
