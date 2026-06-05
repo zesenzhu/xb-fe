@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -302,12 +303,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mt-2 dark:bg-zinc-900 dark:border-zinc-800">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.username}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email || '未绑定邮箱'}</p>
-                  </div>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.username}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email || '未绑定邮箱'}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator className="dark:bg-zinc-800" />
                 <DropdownMenuItem className="cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 gap-2">
                   <UserIcon className="w-4 h-4" />
