@@ -250,7 +250,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* 动态面包屑导航 (隐藏在极小屏幕下) */}
             <nav className="hidden sm:flex items-center gap-1 text-sm text-slate-500 dark:text-zinc-400">
               {breadcrumbs.map((crumb, idx) => (
-                <div key={crumb.path} className="flex items-center">
+                <div key={`${crumb.path}-${idx}`} className="flex items-center">
                   {idx > 0 && <ChevronRight className="w-3.5 h-3.5 mx-1 text-slate-400" />}
                   {idx === breadcrumbs.length - 1 ? (
                     <span className="font-semibold text-slate-800 dark:text-zinc-200">{crumb.name}</span>
