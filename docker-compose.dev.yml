@@ -15,4 +15,4 @@ services:
       - .:/app
       - /app/node_modules
       - /app/.next
-    command: sh -c "npm install -g pnpm && pnpm install && pnpm run dev"
+    command: sh -c "npm install -g pnpm@9 && pnpm install && pnpm run dev"
