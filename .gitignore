@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 .pnpm-store/
+pnpm-workspace.yaml
 /.pnp
 .pnp.*
 .yarn/*
