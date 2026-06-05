@@ -10,3 +10,17 @@ services:
     environment:
       PORT: 8080
       HOSTNAME: "0.0.0.0"
+
+  gateway:
+    image: caddy:alpine
+    container_name: xbnest-gateway
+    restart: always
+    network_mode: host
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
