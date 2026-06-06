@@ -1,13 +1,13 @@
 # 默认仅通过 HTTP（80 端口）监听公网 IP 访问
 :80 {
-    # 1. 转发所有以 /api/ 开头的 API 请求到后端 NestJS 服务容器
-    reverse_proxy /api/* xbnest-backend-prod:8081
+    # 1. 转发所有以 /api/ 开头的 API 请求到后端 NestJS 服务（通过宿主机网桥中转）
+    reverse_proxy /api/* host.docker.internal:8081
 
-    # 2. 转发实时日志/设备监控的 WebSockets 长连接请求到后端服务容器
-    reverse_proxy /socket.io/* xbnest-backend-prod:8081
+    # 2. 转发实时日志/设备监控的 WebSockets 长连接请求到后端服务（通过宿主机网桥中转）
+    reverse_proxy /socket.io/* host.docker.internal:8081
 
-    # 3. 转发所有其他页面请求到前端 Next.js standalone 服务容器
-    reverse_proxy * xbnest-frontend-prod:8080
+    # 3. 转发所有其他页面请求到前端 Next.js standalone 服务（通过宿主机网桥中转）
+    reverse_proxy * host.docker.internal:8080
 }
 
 # 💡 以后绑定域名时，只需在服务器上把上面的第一行 ':80' 修改为你的域名：

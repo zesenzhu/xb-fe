@@ -24,6 +24,8 @@ services:
       - caddy_config:/config
     networks:
       - xbnest-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   xbnest-net:
