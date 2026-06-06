@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button, Input as AntInput, Select as AntSelect, Slider, Space, message, Timeline } from 'antd';
+import { Button, Input as AntInput, Select as AntSelect, Slider, Space, message, Timeline, Drawer } from 'antd';
 import { Bot, Send, User, Settings, Sparkles, Brain, Cpu, CheckCircle2, Loader2, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,10 +31,93 @@ export default function AiPage() {
   const [agentSteps, setAgentSteps] = useState<Array<{ title: string; description: string; status: 'finish' | 'process' | 'wait' }>>([]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 公用参数与步骤追踪渲染函数 (用于PC端左侧与移动端抽屉)
+  const renderSettingsContent = () => (
+    <div className="space-y-4 flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+      {/* 参数设定卡片 */}
+      <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm shrink-0">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+            <Settings className="w-4 h-4 text-slate-500" />
+            模型推理参数
+          </CardTitle>
+          <CardDescription className="text-[10px]">调节 Agent 运行时温度与多路提示词模版</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-xs">
+          {/* 模型选择 */}
+          <div className="space-y-1.5">
+            <span className="text-slate-400 font-semibold">选择决策核心:</span>
+            <AntSelect
+              value={model}
+              onChange={(val) => setModel(val)}
+              className="w-full h-8"
+              options={[
+                { value: 'deepseek-reasoner', label: 'DeepSeek-R1 (深度思考)' },
+                { value: 'deepseek-chat', label: 'DeepSeek-V3 (极速响应)' },
+                { value: 'qwen-max', label: '通义千问 Qwen-Max (阿里)' },
+                { value: 'qwen-plus', label: '通义千问 Qwen-Plus (阿里)' },
+              ]}
+            />
+          </div>
+
+          {/* 温度滑块 */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between font-semibold text-slate-400">
+              <span>思维创造力 (Temp):</span>
+              <span className="font-mono text-slate-700 dark:text-zinc-200">{temp}</span>
+            </div>
+            <Slider
+              min={0}
+              max={1}
+              step={0.1}
+              value={temp}
+              onChange={(val) => setTemp(val)}
+              className="my-2"
+            />
+          </div>
+          
+          {/* 系统提示词 */}
+          <div className="space-y-1.5">
+            <span className="text-slate-400 font-semibold">系统提示词 (System Prompt):</span>
+            <AntInput.TextArea
+              value="你是一个部署在 NestJS 上游的前端 AI 代理。你可以通过直接下发工具来获取 PostgreSQL 状态，控制 Redis QPS 注册码，下发 MQTT 机器人命令。"
+              rows={4}
+              className="text-[11px] leading-normal"
+              disabled
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 动态 Agent 物理任务步骤追踪线 (仅在有步骤时展示) */}
+      {agentSteps.length > 0 && (
+        <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex-1 overflow-y-auto">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+              <ListTodo className="w-4 h-4 text-emerald-500" />
+              Agent 步骤追踪链
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Timeline
+              items={agentSteps.map((step) => ({
+                title: <span className="text-xs font-bold">{step.title}</span>,
+                description: <span className="text-[10px] text-slate-400 font-semibold block mt-1">{step.description}</span>,
+                color: step.status === 'finish' ? 'green' : step.status === 'process' ? 'blue' : 'gray',
+                dot: step.status === 'process' ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" /> : undefined,
+              }))}
+            />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -177,84 +260,9 @@ export default function AiPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-7.5rem)] lg:h-[calc(100vh-8.5rem)] max-h-[calc(100vh-7.5rem)] lg:max-h-[calc(100vh-8.5rem)] animate-in fade-in duration-300 select-none overflow-hidden">
       
-      {/* 1. 左侧：模型调试参数控制面板 */}
-      <div className="lg:col-span-1 space-y-4 flex flex-col h-full overflow-hidden">
-        {/* 参数设定卡片 */}
-        <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm shrink-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-              <Settings className="w-4 h-4 text-slate-500" />
-              模型推理参数
-            </CardTitle>
-            <CardDescription className="text-[10px]">调节 Agent 运行时温度与多路提示词模版</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            {/* 模型选择 */}
-            <div className="space-y-1.5">
-              <span className="text-slate-400 font-semibold">选择决策核心:</span>
-              <AntSelect
-                value={model}
-                onChange={(val) => setModel(val)}
-                className="w-full h-8"
-                options={[
-                  { value: 'deepseek-reasoner', label: 'DeepSeek-R1 (深度思考)' },
-                  { value: 'deepseek-chat', label: 'DeepSeek-V3 (极速响应)' },
-                  { value: 'qwen-max', label: '通义千问 Qwen-Max (阿里)' },
-                  { value: 'qwen-plus', label: '通义千问 Qwen-Plus (阿里)' },
-                ]}
-              />
-            </div>
-
-            {/* 温度滑块 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-semibold text-slate-400">
-                <span>思维创造力 (Temp):</span>
-                <span className="font-mono text-slate-700 dark:text-zinc-200">{temp}</span>
-              </div>
-              <Slider
-                min={0}
-                max={1}
-                step={0.1}
-                value={temp}
-                onChange={(val) => setTemp(val)}
-                className="my-2"
-              />
-            </div>
-            
-            {/* 系统提示词 */}
-            <div className="space-y-1.5">
-              <span className="text-slate-400 font-semibold">系统提示词 (System Prompt):</span>
-              <AntInput.TextArea
-                value="你是一个部署在 NestJS 上游的前端 AI 代理。你可以通过直接下发工具来获取 PostgreSQL 状态，控制 Redis QPS 注册码，下发 MQTT 机器人命令。"
-                rows={4}
-                className="text-[11px] leading-normal"
-                disabled
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 动态 Agent 物理任务步骤追踪线 (仅在有步骤时展示) */}
-        {agentSteps.length > 0 && (
-          <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex-1 overflow-y-auto">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                <ListTodo className="w-4 h-4 text-emerald-500" />
-                Agent 步骤追踪链
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <Timeline
-                items={agentSteps.map((step) => ({
-                  title: <span className="text-xs font-bold">{step.title}</span>,
-                  description: <span className="text-[10px] text-slate-400 font-semibold block mt-1">{step.description}</span>,
-                  color: step.status === 'finish' ? 'green' : step.status === 'process' ? 'blue' : 'gray',
-                  dot: step.status === 'process' ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" /> : undefined,
-                }))}
-              />
-            </CardContent>
-          </Card>
-        )}
+      {/* 1. 左侧：模型调试参数控制面板 (PC端常驻，移动端隐藏) */}
+      <div className="hidden lg:flex lg:col-span-1 flex-col h-full overflow-hidden">
+        {renderSettingsContent()}
       </div>
 
       {/* 2. 右侧：主 AI Streaming 对话调试区 */}
@@ -274,9 +282,18 @@ export default function AiPage() {
               </p>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 font-bold uppercase font-mono">
-            {model}
-          </span>
+          <div className="flex items-center gap-2">
+            {/* 移动端专属调试齿轮按钮 */}
+            <Button
+              type="text"
+              icon={<Settings className="w-4 h-4 text-slate-500 hover:text-slate-800" />}
+              onClick={() => setDrawerVisible(true)}
+              className="lg:hidden flex items-center justify-center h-8 w-8 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg p-0"
+            />
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 font-bold uppercase font-mono">
+              {model}
+            </span>
+          </div>
         </div>
 
         {/* 聊天消息区 */}
@@ -358,6 +375,19 @@ export default function AiPage() {
           </div>
         </CardFooter>
       </div>
+
+      {/* 移动端专属调试参数抽屉 */}
+      <Drawer
+        title="模型推理与调试参数"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        width={320}
+        styles={{ body: { padding: '16px', backgroundColor: 'transparent' } }}
+        className="dark:bg-zinc-900 dark:text-zinc-100"
+      >
+        {renderSettingsContent()}
+      </Drawer>
     </div>
   );
 }
