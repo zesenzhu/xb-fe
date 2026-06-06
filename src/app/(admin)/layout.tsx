@@ -87,9 +87,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // 2. 强制清除本地状态和 Cookie
       Cookies.remove('access_token');
       Cookies.remove('refresh_token');
-      clearAuth();
+      clearAuth(); // 状态更新会自动触发上面的 useEffect 跳转到登录页，避免重复 push 造成路由卡顿
       toast.success('退出登录成功');
-      router.push('/login');
     }
   };
 
