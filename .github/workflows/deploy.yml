@@ -98,6 +98,18 @@ jobs:
             cd /www/wwwroot/xbnest/frontend
             # 物理自动校验并静默组建外部 Docker 共享网络以打通隔离屏障
             docker network inspect xbnest-net >/dev/null 2>&1 || docker network create xbnest-net
+            # 动态检测服务器宿主机 80 端口是否被占用 (多工具兼容) 并自适应配置网关端口
+            if (command -v ss >/dev/null && ss -tlnp | grep -q ":80 ") || (command -v lsof >/dev/null && lsof -i :80 >/dev/null 2>&1) || (command -v netstat >/dev/null && netstat -tulnp | grep -q ":80 "); then
+              echo "[Deploy] ⚠️ 检测到服务器 80 端口已被占用，自适应调度 Caddy 网关避让至 8090 端口..."
+              touch .env
+              sed -i '/GATEWAY_PORT/d' .env || true
+              echo "GATEWAY_PORT=8090" >> .env
+            else
+              echo "[Deploy] ✓ 检测到服务器 80 端口空闲，Caddy 网关自适应直连绑定 80 端口..."
+              touch .env
+              sed -i '/GATEWAY_PORT/d' .env || true
+              echo "GATEWAY_PORT=80" >> .env
+            fi
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

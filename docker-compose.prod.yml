@@ -17,7 +17,7 @@ services:
     container_name: xbnest-gateway
     restart: always
     ports:
-      - "8090:80"
+      - "${GATEWAY_PORT:-80}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
