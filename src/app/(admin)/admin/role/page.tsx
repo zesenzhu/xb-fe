@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, Space, Tag, Checkbox, Tree, message } from 'antd';
-import { ShieldCheck, ShieldAlert, Plus, Save, Info } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Plus, Save, Info, Loader2 } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 interface RoleItem {
   id: string;
@@ -70,16 +71,49 @@ const permissionTreeData = [
 ];
 
 export default function RolePage() {
-  const [selectedRole, setSelectedRole] = useState<RoleItem>(mockRoles[1]); // 默认选中运营专员
-  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>(mockRoles[1].permissions);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [selectedRole, setSelectedRole] = useState<RoleItem | null>(null);
+  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  // 获取真实角色与权限绑定关系
+  const fetchRolesDetail = async (keepSelectionId?: string) => {
+    setLoading(true);
+    try {
+      const res: any = await api.get('/users/roles/detail');
+      const fetchedRoles = res || [];
+      setRoles(fetchedRoles);
+      
+      // 处理当前选中角色的关联关系
+      if (fetchedRoles.length > 0) {
+        const activeId = keepSelectionId || selectedRole?.id || fetchedRoles[1]?.id || fetchedRoles[0].id;
+        const currentActive = fetchedRoles.find((r: any) => r.id === activeId) || fetchedRoles[0];
+        setSelectedRole(currentActive);
+        
+        if (currentActive.code === 'admin') {
+          setCheckedKeys(['*']);
+        } else {
+          setCheckedKeys(currentActive.permissions || []);
+        }
+      }
+    } catch (err: any) {
+      message.error(err.message || '获取系统角色权限关系失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRolesDetail();
+  }, []);
 
   const handleSelectRole = (role: RoleItem) => {
     setSelectedRole(role);
-    // 如果是超级管理员，默认勾选所有（模拟）
     if (role.code === 'admin') {
       setCheckedKeys(['*']);
     } else {
-      setCheckedKeys(role.permissions);
+      setCheckedKeys(role.permissions || []);
     }
   };
 
@@ -87,10 +121,25 @@ export default function RolePage() {
     setCheckedKeys(checked as React.Key[]);
   };
 
-  const handleSavePermissions = () => {
-    message.loading('正在将权限集写入 Redis 与 PostgreSQL...', 1.5).then(() => {
-      message.success(`角色 [ ${selectedRole.name} ] 权限结构保存成功！共激活 ${checkedKeys.length} 个规则`);
-    });
+  const handleSavePermissions = async () => {
+    if (!selectedRole) return;
+    setSaveLoading(true);
+    try {
+      // 过滤掉前端分类的虚拟父节点（只保留带冒号的细粒度具体权限码或通配符）
+      const realCodes = (checkedKeys as string[]).filter(key => key.includes(':') || key === '*');
+      
+      await api.put(`/users/roles/${selectedRole.id}/permissions`, {
+        permissionCodes: realCodes,
+      });
+      message.success(`角色 [ ${selectedRole.name} ] 权限集保存成功！`);
+      
+      // 刷新列表以使本地状态与数据库保持同步
+      await fetchRolesDetail(selectedRole.id);
+    } catch (err: any) {
+      message.error(err.message || '保存角色权限失败');
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   return (
@@ -120,37 +169,44 @@ export default function RolePage() {
         <div className="lg:col-span-1 space-y-4">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider select-none">系统核心角色</h3>
           <div className="space-y-3">
-            {mockRoles.map((role) => {
-              const isSelected = selectedRole.id === role.id;
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+                <span>正在获取角色数据...</span>
+              </div>
+            ) : (
+              roles.map((role) => {
+                const isSelected = selectedRole?.id === role.id;
 
-              return (
-                <button
-                  key={role.id}
-                  onClick={() => handleSelectRole(role)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 outline-none ${
-                    isSelected
-                      ? 'bg-slate-950 dark:bg-white border-slate-950 dark:border-white text-white dark:text-zinc-950 shadow-md'
-                      : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">{role.name}</span>
-                    <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => handleSelectRole(role)}
+                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 outline-none ${
                       isSelected
-                        ? 'bg-slate-800 text-slate-200 dark:bg-zinc-100 dark:text-zinc-800'
-                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300'
+                        ? 'bg-slate-950 dark:bg-white border-slate-950 dark:border-white text-white dark:text-zinc-950 shadow-md'
+                        : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm">{role.name}</span>
+                      <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
+                        isSelected
+                          ? 'bg-slate-800 text-slate-200 dark:bg-zinc-100 dark:text-zinc-800'
+                          : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300'
+                      }`}>
+                        {role.code}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-3 leading-relaxed font-medium ${
+                      isSelected ? 'text-slate-300 dark:text-zinc-700' : 'text-slate-500 dark:text-zinc-400'
                     }`}>
-                      {role.code}
-                    </span>
-                  </div>
-                  <p className={`text-xs mt-3 leading-relaxed font-medium ${
-                    isSelected ? 'text-slate-300 dark:text-zinc-700' : 'text-slate-500 dark:text-zinc-400'
-                  }`}>
-                    {role.description}
-                  </p>
-                </button>
-              );
-            })}
+                      {role.description}
+                    </p>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -160,14 +216,15 @@ export default function RolePage() {
             <div>
               <CardTitle className="text-sm font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4.5 h-4.5 text-indigo-500" />
-                权限分配树控制 (Role: {selectedRole.name})
+                权限分配树控制 (Role: {selectedRole?.name || '-'})
               </CardTitle>
               <CardDescription className="text-[10px] mt-1">勾选并调整该角色允许进入的菜单页面或执行的敏感按钮权限码</CardDescription>
             </div>
-            {selectedRole.code !== 'admin' && (
+            {selectedRole && selectedRole.code !== 'admin' && (
               <Button
                 type="primary"
                 onClick={handleSavePermissions}
+                loading={saveLoading}
                 className="bg-slate-900 hover:bg-slate-800 text-xs font-bold flex items-center gap-1 h-8"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -176,7 +233,11 @@ export default function RolePage() {
             )}
           </CardHeader>
           <CardContent className="pt-6 flex-1 overflow-y-auto min-h-[300px]">
-            {selectedRole.code === 'admin' ? (
+            {!selectedRole ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12 text-xs">
+                请先选择左侧系统角色
+              </div>
+            ) : selectedRole.code === 'admin' ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12 gap-3 text-center">
                 <ShieldCheck className="w-12 h-12 text-emerald-500 animate-pulse" />
                 <div>
