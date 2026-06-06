@@ -6,13 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import Cookies from 'js-cookie';
 import { useUserStore, UserProfile } from '@/store/useUserStore';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { KeyRound, ShieldAlert, Loader2, Sparkles, User, HelpCircle } from 'lucide-react';
+import { KeyRound, ShieldAlert, Loader2, Sparkles, User } from 'lucide-react';
 import { api } from '@/lib/axios';
 
 // 使用 Zod 校验两种登录模式的表单架构
@@ -53,42 +52,10 @@ function UserLoginForm() {
       const redirectUrl = searchParams.get('redirect') || '/user/log';
       router.push(redirectUrl);
     } catch (error: any) {
-      console.warn('注册码验证接口未响应，进入降级 Mock 模式', error);
-      toast.error('未检测到后端激活服务，已为您降级启动 Mock 极速预览！');
-      
-      // 模拟写入用户端独立鉴权 Cookie，避开管理员 access_token
-      Cookies.set('user_access_token', 'mock-user-jwt-xxx', { expires: 1 });
-      Cookies.set('user_refresh_token', 'mock-user-refresh-yyy', { expires: 7 });
-
-      const mockUser: UserProfile = {
-        id: 'client-user-uuid',
-        username: values.code.trim().toUpperCase(),
-        nickname: `授权终端 (${values.code.trim().slice(0, 7)})`,
-        email: 'client@xbnest.com',
-        role: { id: 'r3', name: '终端授权用户', code: 'client' },
-      };
-
-      // 仅分配对外用户端必备的读取权限，彻底杜绝越权访问内部管理后台
-      const mockPermissions = [
-        'dashboard:view',
-        'log:list',
-        'device:list',
-      ];
-
-      setAuth(mockUser, mockPermissions);
-      toast.success(`注册码登录成功！欢迎访问终端控制台`);
-      
-      const redirectUrl = searchParams.get('redirect') || '/user/log';
-      router.push(redirectUrl);
+      toast.error(error.message || '激活登录失败，请检查您的注册码！');
     } finally {
       setLoading(false);
     }
-  };
-
-  // 一键填入 Mock 激活码快捷辅助
-  const fillMockCode = () => {
-    licenseForm.setValue('code', 'XB-TEST-888888');
-    toast.info('已自动填入开发测试激活码');
   };
 
   return (
@@ -147,24 +114,12 @@ function UserLoginForm() {
                     验证网络授权中...
                   </>
                 ) : (
-                  '一键连接并验证设备'
+                  '连接并验证设备'
                 )}
               </Button>
             </form>
 
           </CardContent>
-
-          {/* 快捷一键登录辅助 */}
-          <CardFooter className="pt-2 pb-6 flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              onClick={fillMockCode}
-              className="w-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border border-zinc-800 text-[10px] font-bold flex items-center justify-center gap-1 h-8 rounded-xl"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              使用内置开发测试激活码一键填入体验
-            </Button>
-          </CardFooter>
         </Card>
       </div>
     </div>

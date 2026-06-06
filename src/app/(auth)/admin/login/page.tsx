@@ -6,13 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import Cookies from 'js-cookie';
 import { useUserStore, UserProfile } from '@/store/useUserStore';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { KeyRound, Mail, User, ShieldCheck, Loader2 } from 'lucide-react';
+import { KeyRound, Mail, User, Loader2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 
 // 使用 Zod 定义前端严格的表单校验架构
@@ -61,60 +60,11 @@ function LoginForm() {
       const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
       router.push(redirectUrl);
     } catch (error: any) {
-      // 2. 如果后端接口尚未部署或报错，系统将优雅降级到提示，并提供极速 Mock 测试通道
-      console.warn('正式登录接口未响应，进入预览测试模式', error);
-      toast.error(error.message || '正式登录请求失败，请尝试使用下方“一键快捷体验”通道预览系统！');
+      console.warn('登录接口发生异常', error);
+      toast.error(error.message || '登录请求失败，请检查您的用户名或密码！');
     } finally {
       setLoading(false);
     }
-  };
-
-  // Mock 一键体验快捷通道
-  const handleMockLogin = (roleType: 'admin' | 'operator') => {
-    setLoading(true);
-    setTimeout(() => {
-      // 模拟后端写入的访问 Cookie (以通过 Middleware 校验)
-      Cookies.set('access_token', 'mock-jwt-token-xyz', { expires: 1 });
-      Cookies.set('refresh_token', 'mock-refresh-token-abc', { expires: 7 });
-
-      let mockUser: UserProfile;
-      let mockPermissions: string[];
-
-      if (roleType === 'admin') {
-        mockUser = {
-          id: 'admin-uuid-1',
-          username: 'admin',
-          nickname: '超级管理员',
-          email: 'admin@xbnest.com',
-          role: { id: 'r1', name: '超级管理员', code: 'admin' },
-        };
-        // 超级管理员通配符权限，解锁全部后台侧边菜单与操作按钮
-        mockPermissions = ['*'];
-      } else {
-        mockUser = {
-          id: 'op-uuid-2',
-          username: 'operator',
-          nickname: '运营维护专员',
-          email: 'op@xbnest.com',
-          role: { id: 'r2', name: '运营专员', code: 'operator' },
-        };
-        // 普通人员受限权限，禁用部分管理菜单与回收/删除等高危操作
-        mockPermissions = [
-          'dashboard:view',
-          'code:list',
-          'code:create',
-          'log:list',
-          'device:list',
-        ];
-      }
-
-      setAuth(mockUser, mockPermissions);
-      toast.success(`一键快捷登录成功！当前身份：${mockUser.nickname}`);
-      
-      const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
-      router.push(redirectUrl);
-      setLoading(false);
-    }, 800);
   };
 
   return (
@@ -203,41 +153,7 @@ function LoginForm() {
             </form>
           </CardContent>
 
-          {/* 装饰分割线 */}
-          <div className="relative px-6 py-2">
-            <div className="absolute inset-0 flex items-center px-6">
-              <span className="w-full border-t border-slate-800" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-slate-950 px-2 text-[10px] text-slate-500 font-bold tracking-wider">
-                或使用快捷一键体验
-              </span>
-            </div>
-          </div>
 
-          {/* 快捷通道按钮 */}
-          <CardFooter className="flex flex-col gap-2 pt-2 pb-6">
-            <div className="grid grid-cols-2 gap-3 w-full">
-              <Button
-                variant="outline"
-                onClick={() => handleMockLogin('admin')}
-                disabled={loading}
-                className="border-slate-800 bg-slate-900/30 text-white hover:bg-slate-800 hover:text-white flex items-center justify-center gap-1.5 text-xs py-2 font-semibold transition-all active:scale-97"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                超级管理员
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleMockLogin('operator')}
-                disabled={loading}
-                className="border-slate-800 bg-slate-900/30 text-white hover:bg-slate-800 hover:text-white flex items-center justify-center gap-1.5 text-xs py-2 font-semibold transition-all active:scale-97"
-              >
-                <User className="w-4 h-4 text-sky-400" />
-                运营维护专员
-              </Button>
-            </div>
-          </CardFooter>
         </Card>
       </div>
     </div>
