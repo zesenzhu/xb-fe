@@ -62,6 +62,7 @@ export default function AiPage() {
                 { value: 'deepseek-chat', label: 'DeepSeek-V3 (极速响应)' },
                 { value: 'qwen-max', label: '通义千问 Qwen-Max (阿里)' },
                 { value: 'qwen-plus', label: '通义千问 Qwen-Plus (阿里)' },
+                { value: 'doubao-pro', label: '豆包大模型 Doubao-Pro (火山)' },
               ]}
             />
           </div>
