@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setMounted(true);
     // 如果客户端显示未登录，直接跳登录页 (双重安全拦截)
     if (!isAuthenticated) {
-      router.push('/login');
+      router.push('/admin/login');
     }
   }, [isAuthenticated, router]);
 

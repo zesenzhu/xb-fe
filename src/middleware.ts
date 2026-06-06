@@ -30,7 +30,7 @@ export function middleware(request: NextRequest) {
 
   if (isAdminProtected) {
     if (!adminAccessToken && !adminRefreshToken) {
-      const loginUrl = new URL('/login', request.url);
+      const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -55,7 +55,7 @@ export function middleware(request: NextRequest) {
   // 三、拦截认证路由防止重复登录
   // -------------------------------------------------------------
   // 管理员登录拦截
-  if (pathname === '/login' || pathname === '/register') {
+  if (pathname === '/admin/login' || pathname === '/register') {
     if (adminAccessToken) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }

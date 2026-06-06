@@ -103,7 +103,7 @@ api.interceptors.response.use(
           // 清除任何本地存储的用户信息或标志 (如有)
           localStorage.removeItem('user-storage');
           // 跳转至登录页，并带上退出原由
-          window.location.href = `/login?expired=true&redirect=${encodeURIComponent(window.location.pathname)}`;
+          window.location.href = `/admin/login?expired=true&redirect=${encodeURIComponent(window.location.pathname)}`;
         }
         return Promise.reject(refreshError);
       } finally {
