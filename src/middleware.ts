@@ -24,9 +24,9 @@ export function middleware(request: NextRequest) {
   const userRefreshToken = request.cookies.get('user_refresh_token')?.value;
 
   // -------------------------------------------------------------
-  // 一、拦截管理员后台受保护路由
+  // 一、拦截管理员后台受保护路由 (排除登录页面本身)
   // -------------------------------------------------------------
-  const isAdminProtected = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isAdminProtected = (pathname === '/admin' || pathname.startsWith('/admin/')) && pathname !== '/admin/login';
 
   if (isAdminProtected) {
     if (!adminAccessToken && !adminRefreshToken) {
