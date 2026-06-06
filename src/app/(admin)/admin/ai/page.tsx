@@ -25,7 +25,7 @@ export default function AiPage() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [temp, setTemp] = useState(0.7);
-  const [model, setModel] = useState('DeepSeek-R1');
+  const [model, setModel] = useState('deepseek-reasoner');
   
   // 模拟 Agent 任务多步执行节点
   const [agentSteps, setAgentSteps] = useState<Array<{ title: string; description: string; status: 'finish' | 'process' | 'wait' }>>([]);
@@ -36,7 +36,7 @@ export default function AiPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
     const userMsg: MessageItem = {
@@ -49,73 +49,136 @@ export default function AiPage() {
     setInputText('');
     setLoading(true);
 
-    // 1. 初始化 Agent 物理任务执行步骤进度 (侧边栏动态联动)
+    // 1. 初始化 Agent 步骤进度
     setAgentSteps([
-      { title: '理解自然语言意图', description: '正在解析指令...', status: 'process' },
-      { title: '匹配系统核心工具', description: '等待意图确认', status: 'wait' },
-      { title: '执行物理系统操作', description: '等待上游输出', status: 'wait' },
+      { title: '正在理解自然语言意图', description: '正在发起网络请求...', status: 'process' },
     ]);
 
-    // 2. 模拟 AI 深度思考并流式返回内容
-    setTimeout(() => {
-      // 步骤 1 完成
-      setAgentSteps([
-        { title: '理解自然语言意图', description: '成功识别指令 [ 重置过热设备 ]', status: 'finish' },
-        { title: '匹配系统核心工具', description: '正在调度 MQTT 推送 API...', status: 'process' },
-        { title: '执行物理系统操作', description: '等待上游输出', status: 'wait' },
-      ]);
+    // 2. 格式化历史消息上下文
+    const historyMessages = messages
+      .concat(userMsg)
+      .map((m) => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.content || '',
+      }));
 
-      const streamMsgId = Math.random().toString();
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
+      const response = await fetch(`${apiUrl}/ai-agent/chat-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: historyMessages,
+          temperature: temp,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`连接大模型失败，HTTP 状态码: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('当前浏览器不支持流式读取通道。');
+      }
+
+      // 插入一条空白 AI 消息，供流式追加
+      const agentMsgId = Math.random().toString();
       const newAgentMsg: MessageItem = {
-        id: streamMsgId,
+        id: agentMsgId,
         sender: 'agent',
-        thinking: '用户请求“重置系统内负载最高且处于过热状态的机器人设备”。根据系统自检模型：当前 BAICHUAN-ROBOT-02 温度高达 42°C，CPU 负载 78.2%，处于过热告警阶段。调用 MQTT 下发工具: publish("payload/cmd/REBOOT", { device: "BAICHUAN-ROBOT-02" }).',
+        thinking: '',
         content: '',
         isStreaming: true,
       };
-
       setMessages((prev) => [...prev, newAgentMsg]);
 
-      // 模拟流式打字机输出
-      const fullText = '我已经成功识别并帮您处理了该指令！我发现系统内目前负载最高且处于过热预警中的设备为 `BAICHUAN-ROBOT-02` (温度: 42°C, 负载: 78.2%)。我已经通过 MQTT 物理信道向其下发了 `REBOOT` 硬件重置指令。设备已成功接收并已在 1.5 秒前进入物理重启链路。您可以在“MQTT设备监控”或“脚本运行日志”中看到实时心跳变化。';
-      let currentIdx = 0;
-      
-      const interval = setInterval(() => {
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id === streamMsgId) {
-              const nextContent = fullText.slice(0, currentIdx + 4);
-              currentIdx += 4;
-              const finished = currentIdx >= fullText.length;
-              if (finished) {
-                clearInterval(interval);
-                setLoading(false);
-                // 步骤 2, 3 完成
-                setAgentSteps([
-                  { title: '理解自然语言意图', description: '成功识别指令 [ 重置过热设备 ]', status: 'finish' },
-                  { title: '匹配系统核心工具', description: '成功匹配工具 [ mqtt_publish ]', status: 'finish' },
-                  { title: '执行物理系统操作', description: '成功对 BAICHUAN-ROBOT-02 触发 REBOOT 成功', status: 'finish' },
-                ]);
-              }
-              return {
-                ...msg,
-                content: nextContent,
-                isStreaming: !finished,
-              };
-            }
-            return msg;
-          })
-        );
-      }, 50);
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
 
-    }, 2000); // 模拟 2 秒的思考延迟 (展示深度思考 think 框)
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunkText = decoder.decode(value, { stream: true });
+        const lines = (buffer + chunkText).split('\n');
+        buffer = lines.pop() || ''; // 保留最后一行不完整的字符
+
+        let currentEvent = '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          if (trimmed.startsWith('event:')) {
+            currentEvent = trimmed.slice(6).trim();
+          } else if (trimmed.startsWith('data:')) {
+            const data = trimmed.slice(5).trim();
+
+            if (currentEvent === 'think') {
+              // 流式追加思考链
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === agentMsgId
+                    ? { ...msg, thinking: (msg.thinking || '') + data }
+                    : msg
+                )
+              );
+            } else if (currentEvent === 'message') {
+              // 流式追加正式回复
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === agentMsgId
+                    ? { ...msg, content: (msg.content || '') + data }
+                    : msg
+                )
+              );
+            } else if (currentEvent === 'step') {
+              // 实时推送工具执行状态
+              try {
+                const stepObj = JSON.parse(data);
+                setAgentSteps((prev) => {
+                  const existIdx = prev.findIndex((s) => s.title === stepObj.title);
+                  if (existIdx > -1) {
+                    const copy = [...prev];
+                    copy[existIdx] = stepObj;
+                    return copy;
+                  }
+                  return [...prev, stepObj];
+                });
+              } catch (e) {
+                console.error('解析 Tool Step JSON 失败', e);
+              }
+            } else if (currentEvent === 'close') {
+              // 模型结束发送
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === agentMsgId ? { ...msg, isStreaming: false } : msg
+                )
+              );
+              setLoading(false);
+            } else if (currentEvent === 'error') {
+              message.error(`AI 引擎报错: ${data}`);
+              setLoading(false);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('连接大模型流出错', err);
+      message.error(err.message || '网络连接异常，请确保后端服务正常启动且 API Key 配置正确。');
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-9rem)] animate-in fade-in duration-300 select-none">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-7.5rem)] lg:h-[calc(100vh-8.5rem)] max-h-[calc(100vh-7.5rem)] lg:max-h-[calc(100vh-8.5rem)] animate-in fade-in duration-300 select-none overflow-hidden">
       
       {/* 1. 左侧：模型调试参数控制面板 */}
-      <div className="lg:col-span-1 space-y-4 flex flex-col">
+      <div className="lg:col-span-1 space-y-4 flex flex-col h-full overflow-hidden">
         {/* 参数设定卡片 */}
         <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm shrink-0">
           <CardHeader className="pb-3">
@@ -134,10 +197,10 @@ export default function AiPage() {
                 onChange={(val) => setModel(val)}
                 className="w-full h-8"
                 options={[
-                  { value: 'DeepSeek-R1', label: 'DeepSeek-R1 (深度思考)' },
-                  { value: 'DeepSeek-V3', label: 'DeepSeek-V3 (极速响应)' },
-                  { value: 'GPT-4o', label: 'OpenAI GPT-4o' },
-                  { value: 'Claude-3.5', label: 'Claude 3.5 Sonnet' },
+                  { value: 'deepseek-reasoner', label: 'DeepSeek-R1 (深度思考)' },
+                  { value: 'deepseek-chat', label: 'DeepSeek-V3 (极速响应)' },
+                  { value: 'qwen-max', label: '通义千问 Qwen-Max (阿里)' },
+                  { value: 'qwen-plus', label: '通义千问 Qwen-Plus (阿里)' },
                 ]}
               />
             </div>
@@ -195,7 +258,7 @@ export default function AiPage() {
       </div>
 
       {/* 2. 右侧：主 AI Streaming 对话调试区 */}
-      <div className="lg:col-span-3 flex flex-col bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="lg:col-span-3 flex flex-col bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm h-full">
         
         {/* 对话栏头部 */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-800/10">
@@ -217,7 +280,7 @@ export default function AiPage() {
         </div>
 
         {/* 聊天消息区 */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-6 h-[400px] custom-scrollbar bg-slate-50/30 dark:bg-zinc-950/10 select-text">
+        <div className="flex-1 p-6 overflow-y-auto space-y-6 custom-scrollbar bg-slate-50/30 dark:bg-zinc-950/10 select-text">
           {messages.map((msg) => {
             const isAgent = msg.sender === 'agent';
 
