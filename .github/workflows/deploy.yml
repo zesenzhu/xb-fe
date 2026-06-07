@@ -154,13 +154,16 @@ jobs:
             if [ -z "$NGINX_BIN" ]; then
               echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
               echo "[Deploy] ===== 正在为您收集系统进程与路径信息，用于进一步诊断 ====="
-              echo "1. Nginx 运行状态:"
-              ps -ef | grep nginx || true
+              echo "1. Nginx / OpenResty 运行状态:"
+              ps -ef | grep -E 'nginx|openresty' || true
               echo "2. 系统自带的 which 结果:"
-              which nginx || true
-              echo "3. 检查常见文件是否存在:"
-              ls -la /www/server/nginx/sbin/nginx 2>/dev/null || echo "/www/server/nginx/sbin/nginx 不存在"
-              ls -la /usr/sbin/nginx 2>/dev/null || echo "/usr/sbin/nginx 不存在"
+              which nginx 2>/dev/null || echo "which nginx 找不到"
+              which openresty 2>/dev/null || echo "which openresty 找不到"
+              echo "3. 正在全局查找名为 nginx 或 openresty 的文件 (这可能需要 5-10 秒)..."
+              echo "--- 找到的 nginx 相关文件 ---"
+              find /www /usr /sbin /bin -name "nginx" -type f 2>/dev/null || true
+              echo "--- 找到的 openresty 相关文件 ---"
+              find /www /usr /sbin /bin -name "openresty" -type f 2>/dev/null || true
               echo "[Deploy] ==========================================================="
               exit 1
             fi
