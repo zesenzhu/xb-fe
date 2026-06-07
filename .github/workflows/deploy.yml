@@ -124,15 +124,29 @@ jobs:
             
             # ⚡ 自适应探测 Nginx 可执行文件物理绝对路径 (解决多环境下命令找不到问题)
             NGINX_BIN=""
-            for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
-              if sudo test -x "$path"; then
-                NGINX_BIN="$path"
-                break
-              fi
-            done
             
+            # 1. 🌟 优先通过运行中进程动态定位（可 100% 捕获非标宝塔安装路径）
+            RUNNING_PID=$(pgrep -o nginx || true)
+            if [ -n "$RUNNING_PID" ]; then
+              RUNNING_NGINX=$(readlink -f /proc/$RUNNING_PID/exe 2>/dev/null || true)
+              if [ -n "$RUNNING_NGINX" ] && sudo test -x "$RUNNING_NGINX"; then
+                NGINX_BIN="$RUNNING_NGINX"
+                echo "[Deploy] ⚡ 从运行中进程成功锁定 Nginx 路径: $NGINX_BIN"
+              fi
+            fi
+            
+            # 2. 如果未检测到运行中路径，则遍历常见宝塔与系统路径
             if [ -z "$NGINX_BIN" ]; then
-              # 尝试借助 sudo which 命令进行系统内定位
+              for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
+                if sudo test -x "$path"; then
+                  NGINX_BIN="$path"
+                  break
+                fi
+              done
+            fi
+            
+            # 3. 兜底通过全局命令查找
+            if [ -z "$NGINX_BIN" ]; then
               GLOBAL_NGINX=$(sudo which nginx 2>/dev/null || true)
               if [ -n "$GLOBAL_NGINX" ] && sudo test -x "$GLOBAL_NGINX"; then
                 NGINX_BIN="$GLOBAL_NGINX"
