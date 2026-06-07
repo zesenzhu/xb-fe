@@ -5,75 +5,51 @@ on:
     tags:
       - 'v*' # 仅当推送以 v 开头的版本 Tag 时触发编译与自动部署流水线 (例如 v1.0.0)
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
-  build-and-push:
+  build-image:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Downcase registry image name
-        run: |
-          # ⚠️ 避坑：Docker 镜像包命名强制要求全小写，在此通过 bash 物理转为小写以防大写用户名导致构建熔断
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # 使用 Actions 内置免密 Token 登录 GHCR 仓库
+      - name: Build local Docker image
+        run: |
+          # 编译时注入物理 API 接口相对路径
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || '/api' }} \
+            --build-arg NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL || '' }} \
+            -t xbnest-frontend-prod:latest -f ./Dockerfile .
 
-      - name: Extract Metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=true
+      - name: Save Docker image as tar archive
+        run: |
+          docker save xbnest-frontend-prod:latest | gzip > xbnest-frontend-prod.tar.gz
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
         with:
-          context: ./ # 前端目录的 context (即前端仓库根目录)
-          file: ./Dockerfile
-          push: true
-          build-args: |
-            # 物理接收编译时环境变量，若未配置则默认使用相对路径 /api 保证生产环境健壮性
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || '/api' }}
-            NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL || '' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          name: frontend-image-tar
+          path: xbnest-frontend-prod.tar.gz
+          retention-days: 1
 
   deploy:
-    needs: build-and-push
+    needs: build-image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Downcase registry image name
-        run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image-tar
 
       - name: Generate .env file
         run: |
           echo "FRONTEND_PORT=${{ secrets.FRONTEND_PORT || '8080' }}" > .env
-          echo "FRONTEND_IMAGE=ghcr.io/${{ env.IMAGE_NAME }}:latest" >> .env
+          echo "FRONTEND_IMAGE=xbnest-frontend-prod:latest" >> .env
 
       - name: Render Nginx Template
         env:
@@ -85,14 +61,14 @@ jobs:
           envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.conf.template > out/xiaobao.conf
           envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.http.template > out/xiaobao.http
 
-      - name: Copy docker-compose and .env via SCP
+      - name: Copy docker-compose, .env, config and image tar via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: "docker-compose.prod.yml,.env,out/xiaobao.conf,out/xiaobao.http"
+          source: "docker-compose.prod.yml,.env,out/xiaobao.conf,out/xiaobao.http,xbnest-frontend-prod.tar.gz"
           target: "/www/wwwroot/xbnest/frontend/"
 
       - name: SSH Remote Commands to Deploy
@@ -107,13 +83,22 @@ jobs:
             set -e
             mkdir -p /www/wwwroot/xbnest/frontend
             cd /www/wwwroot/xbnest/frontend
+            
             # 物理自动校验并静默组建外部 Docker 共享网络以打通隔离屏障
             docker network inspect xbnest-net >/dev/null 2>&1 || docker network create xbnest-net
-            docker compose -f docker-compose.prod.yml pull
+            
+            # ⚡ 自动物理载入前端镜像压缩包
+            if [ -f "xbnest-frontend-prod.tar.gz" ]; then
+              echo "[Deploy] 🛡️ 发现前端物理镜像压缩包，开始执行 Docker 物理装载导入..."
+              docker load -i xbnest-frontend-prod.tar.gz
+              echo "[Deploy] ✓ 镜像装载完成，正在清理临时物理包以节省服务器硬盘..."
+              rm -f xbnest-frontend-prod.tar.gz
+            fi
+            
+            # 物理拉起容器
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
             # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境，支持自适应证书降级)
-            # 动态检测宿主机上是否放置了对应域名的物理证书文件
             if [ -f "/etc/nginx/certs/${{ secrets.DOMAIN || 'xiaobao.work' }}.pem" ]; then
               echo "[Deploy] 🛡️ 检测到 SSL 证书已就绪，正在应用 HTTPS 安全站点配置..."
               sudo mv out/xiaobao.conf /www/server/panel/vhost/nginx/xiaobao.conf
@@ -122,10 +107,8 @@ jobs:
               sudo mv out/xiaobao.http /www/server/panel/vhost/nginx/xiaobao.conf
             fi
             
-            # ⚡ 自适应探测 Nginx 可执行文件物理绝对路径 (解决多环境下命令找不到问题)
+            # ⚡ 自适应探测 Nginx 可执行文件绝对路径
             NGINX_BIN=""
-            
-            # 1. 🌟 优先通过运行中进程动态定位（可 100% 捕获非标宝塔安装路径）
             RUNNING_PID=$(pgrep -o nginx || true)
             if [ -n "$RUNNING_PID" ]; then
               RUNNING_NGINX=$(readlink -f /proc/$RUNNING_PID/exe 2>/dev/null || true)
@@ -135,7 +118,6 @@ jobs:
               fi
             fi
             
-            # 2. 如果未检测到运行中路径，则遍历常见宝塔与系统路径
             if [ -z "$NGINX_BIN" ]; then
               for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
                 if sudo test -x "$path"; then
@@ -145,7 +127,6 @@ jobs:
               done
             fi
             
-            # 3. 兜底通过全局命令查找
             if [ -z "$NGINX_BIN" ]; then
               GLOBAL_NGINX=$(sudo which nginx 2>/dev/null || true)
               if [ -n "$GLOBAL_NGINX" ] && sudo test -x "$GLOBAL_NGINX"; then
