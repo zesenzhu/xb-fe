@@ -109,7 +109,7 @@ jobs:
             # 物理自动校验并静默组建外部 Docker 共享网络以打通隔离屏障
             docker network inspect xbnest-net >/dev/null 2>&1 || docker network create xbnest-net
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
             # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境，支持自适应证书降级)
             # 动态检测宿主机上是否放置了对应域名的物理证书文件
@@ -121,8 +121,27 @@ jobs:
               sudo mv out/xiaobao.http /www/server/panel/vhost/nginx/xiaobao.conf
             fi
             
-            sudo /www/server/nginx/sbin/nginx -t
-            sudo /www/server/nginx/sbin/nginx -s reload
+            # ⚡ 自适应探测 Nginx 可执行文件物理绝对路径 (解决多环境下命令找不到问题)
+            NGINX_BIN=""
+            for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
+              if [ -x "$path" ]; then
+                NGINX_BIN="$path"
+                break
+              fi
+            done
+            
+            if [ -z "$NGINX_BIN" ]; then
+              if command -v nginx >/dev/null 2>&1; then
+                NGINX_BIN="nginx"
+              else
+                echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
+                exit 1
+              fi
+            fi
+            
+            echo "[Deploy] 探测到 Nginx 执行路径: $NGINX_BIN"
+            sudo $NGINX_BIN -t
+            sudo $NGINX_BIN -s reload
             echo "[Deploy] ✓ 宿主机宝塔 Nginx 自适应部署配置成功并安全重载！"
             
             docker image prune -f
