@@ -110,13 +110,13 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             
-            # ⚡ 自动同步部署并安全重载 Nginx 配置
+            # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境)
             if [ -f "out/xiaobao.conf" ]; then
-              echo "[Deploy] 发现编译后的 Nginx 配置文件，正在移至配置目录..."
-              sudo mv out/xiaobao.conf /etc/nginx/conf.d/xiaobao.conf
-              sudo nginx -t
-              sudo nginx -s reload
-              echo "[Deploy] ✓ 宿主机 Nginx 自动配置成功且重载完毕！"
+              echo "[Deploy] 发现编译后的 Nginx 配置文件，正在移至宝塔配置目录..."
+              sudo mv out/xiaobao.conf /www/server/panel/vhost/nginx/xiaobao.conf
+              sudo /www/server/nginx/sbin/nginx -t
+              sudo /www/server/nginx/sbin/nginx -s reload
+              echo "[Deploy] ✓ 宿主机宝塔 Nginx 自动配置成功且重载完毕！"
             fi
             
             docker image prune -f
