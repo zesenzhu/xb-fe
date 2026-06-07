@@ -34,7 +34,10 @@ const permissionTreeData = [
     children: [
       { title: '读取用户列表 (user:list)', key: 'user:list' },
       { title: '新建用户 (user:create)', key: 'user:create' },
+      { title: '编辑与分配角色 (user:update)', key: 'user:update' },
       { title: '删除账户权限 (user:delete)', key: 'user:delete' },
+      { title: '读取角色配置 (role:list)', key: 'role:list' },
+      { title: '配置角色权限 (role:update)', key: 'role:update' },
     ],
   },
   {
@@ -43,6 +46,7 @@ const permissionTreeData = [
     children: [
       { title: '读取注册码列表 (code:list)', key: 'code:list' },
       { title: '批量生成激活码 (code:create)', key: 'code:create' },
+      { title: '编辑注册码限制 (code:update)', key: 'code:update' },
       { title: '作废停用心跳 (code:delete)', key: 'code:delete' },
     ],
   },

@@ -12,25 +12,6 @@ services:
     networks:
       - xbnest-net
 
-  gateway:
-    image: caddy:alpine
-    container_name: xbnest-gateway
-    restart: always
-    ports:
-      - "${GATEWAY_PORT:-80}:80"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - xbnest-net
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
 networks:
   xbnest-net:
     external: true
-
-volumes:
-  caddy_data:
-  caddy_config:

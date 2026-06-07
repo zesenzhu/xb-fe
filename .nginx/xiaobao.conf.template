@@ -1,0 +1,54 @@
+# 1. HTTP 自动重定向到 HTTPS
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    return 301 https://$host$request_uri;
+}
+
+# 2. HTTPS 统一分流网关
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    # 由 DOMAIN 域名变量动态计算生成的 SSL 证书物理路径
+    ssl_certificate /etc/nginx/certs/${DOMAIN}.pem;
+    ssl_certificate_key /etc/nginx/certs/${DOMAIN}.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # ⚡ 规则 A：转发所有以 /api/ 开头的 API 接口请求到后端 NestJS 服务 (默认 8081)
+    location /api/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/api/; 
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 优化实时日志流 (SSE) 推送通道，防止超时被 Nginx 掐断
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+    }
+
+    # ⚡ 规则 B：转发实时监控的 WebSockets 长连接请求到后端服务
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # ⚡ 规则 C：转发所有其他前端页面请求到 Next.js 服务 (默认 8080)
+    location / {
+        proxy_pass http://127.0.0.1:${FRONTEND_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

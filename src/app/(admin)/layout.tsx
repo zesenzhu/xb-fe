@@ -22,6 +22,7 @@ import {
   User as UserIcon,
   Bell,
   ChevronRight,
+  Terminal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +52,7 @@ const menuItems: MenuItem[] = [
   { name: '注册激活码', path: '/admin/code', icon: KeyRound, permission: 'code:list' },
   { name: '脚本运行日志', path: '/admin/log', icon: FileCode2, permission: 'log:list' },
   { name: 'MQTT设备监控', path: '/admin/device', icon: Cpu, permission: 'device:list' },
+  { name: '长连接模拟器', path: '/admin/device/test-simulator', icon: Terminal, permission: 'device:list' },
   { name: 'AI Agent控制台', path: '/admin/ai', icon: Bot, permission: 'ai:list' },
 ];
 
