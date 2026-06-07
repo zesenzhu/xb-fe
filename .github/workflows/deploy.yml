@@ -125,18 +125,24 @@ jobs:
             # ⚡ 自适应探测 Nginx 可执行文件物理绝对路径 (解决多环境下命令找不到问题)
             NGINX_BIN=""
             for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
-              if [ -x "$path" ]; then
+              if sudo test -x "$path"; then
                 NGINX_BIN="$path"
                 break
               fi
             done
             
             if [ -z "$NGINX_BIN" ]; then
-              if command -v nginx >/dev/null 2>&1; then
-                NGINX_BIN="nginx"
+              # 尝试借助 sudo which 命令进行系统内定位
+              GLOBAL_NGINX=$(sudo which nginx 2>/dev/null || true)
+              if [ -n "$GLOBAL_NGINX" ] && sudo test -x "$GLOBAL_NGINX"; then
+                NGINX_BIN="$GLOBAL_NGINX"
               else
-                echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
-                exit 1
+                if command -v nginx >/dev/null 2>&1; then
+                  NGINX_BIN="nginx"
+                else
+                  echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
+                  exit 1
+                fi
               fi
             fi
             
