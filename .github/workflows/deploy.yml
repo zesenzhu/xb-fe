@@ -109,36 +109,60 @@ jobs:
             
             # ⚡ 自适应探测 Nginx 可执行文件绝对路径
             NGINX_BIN=""
-            RUNNING_PID=$(pgrep -o nginx || true)
-            if [ -n "$RUNNING_PID" ]; then
-              RUNNING_NGINX=$(readlink -f /proc/$RUNNING_PID/exe 2>/dev/null || true)
-              if [ -n "$RUNNING_NGINX" ] && sudo test -x "$RUNNING_NGINX"; then
-                NGINX_BIN="$RUNNING_NGINX"
-                echo "[Deploy] ⚡ 从运行中进程成功锁定 Nginx 路径: $NGINX_BIN"
+            
+            # 方法 1：从正在运行的 nginx 进程的命令行参数中提取路径 (普通用户也可以用 ps 查到)
+            RUNNING_PATH=$(ps -ef | grep -E 'nginx: master|nginx: worker' | grep -v grep | grep -oE '/[^ ]+/nginx' | head -n 1 || true)
+            if [ -n "$RUNNING_PATH" ] && [ -f "$RUNNING_PATH" ]; then
+              NGINX_BIN="$RUNNING_PATH"
+              echo "[Deploy] ⚡ 从运行中进程命令行成功锁定 Nginx 路径: $NGINX_BIN"
+            fi
+            
+            # 方法 2：使用 sudo readlink 读取正在运行的 nginx PID 的 exe 软链接
+            if [ -z "$NGINX_BIN" ]; then
+              RUNNING_PID=$(pgrep -o nginx || true)
+              if [ -n "$RUNNING_PID" ]; then
+                RUNNING_NGINX=$(sudo readlink -f /proc/$RUNNING_PID/exe 2>/dev/null || true)
+                if [ -n "$RUNNING_NGINX" ] && [ -f "$RUNNING_NGINX" ]; then
+                  NGINX_BIN="$RUNNING_NGINX"
+                  echo "[Deploy] ⚡ 从运行中进程 PID 锁定 Nginx 路径: $NGINX_BIN"
+                fi
               fi
             fi
             
+            # 方法 3：扫描宿主机常见物理路径 (不使用容易报无权限的 sudo test -x，直接用普通用户判断文件是否存在)
             if [ -z "$NGINX_BIN" ]; then
               for path in "/www/server/nginx/sbin/nginx" "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/usr/bin/nginx"; do
-                if sudo test -x "$path"; then
+                if [ -f "$path" ]; then
                   NGINX_BIN="$path"
+                  echo "[Deploy] ⚡ 扫描到已存在路径: $NGINX_BIN"
                   break
                 fi
               done
             fi
             
+            # 方法 4：查找全局 PATH 中的 nginx
             if [ -z "$NGINX_BIN" ]; then
-              GLOBAL_NGINX=$(sudo which nginx 2>/dev/null || true)
-              if [ -n "$GLOBAL_NGINX" ] && sudo test -x "$GLOBAL_NGINX"; then
+              GLOBAL_NGINX=$(which nginx 2>/dev/null || true)
+              if [ -n "$GLOBAL_NGINX" ] && [ -f "$GLOBAL_NGINX" ]; then
                 NGINX_BIN="$GLOBAL_NGINX"
-              else
-                if command -v nginx >/dev/null 2>&1; then
-                  NGINX_BIN="nginx"
-                else
-                  echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
-                  exit 1
-                fi
+              elif command -v nginx >/dev/null 2>&1; then
+                NGINX_BIN="nginx"
               fi
+            fi
+            
+            # 异常处理与诊断信息打印
+            if [ -z "$NGINX_BIN" ]; then
+              echo "[Deploy] ❌ 宿主机未检测到有效的 Nginx 可执行文件！"
+              echo "[Deploy] ===== 正在为您收集系统进程与路径信息，用于进一步诊断 ====="
+              echo "1. Nginx 运行状态:"
+              ps -ef | grep nginx || true
+              echo "2. 系统自带的 which 结果:"
+              which nginx || true
+              echo "3. 检查常见文件是否存在:"
+              ls -la /www/server/nginx/sbin/nginx 2>/dev/null || echo "/www/server/nginx/sbin/nginx 不存在"
+              ls -la /usr/sbin/nginx 2>/dev/null || echo "/usr/sbin/nginx 不存在"
+              echo "[Deploy] ==========================================================="
+              exit 1
             fi
             
             echo "[Deploy] 探测到 Nginx 执行路径: $NGINX_BIN"
