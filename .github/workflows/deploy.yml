@@ -83,6 +83,7 @@ jobs:
         run: |
           mkdir -p out
           envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.conf.template > out/xiaobao.conf
+          envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.http.template > out/xiaobao.http
 
       - name: Copy docker-compose and .env via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -91,7 +92,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: "docker-compose.prod.yml,.env,out/xiaobao.conf"
+          source: "docker-compose.prod.yml,.env,out/xiaobao.conf,out/xiaobao.http"
           target: "/www/wwwroot/xbnest/frontend/"
 
       - name: SSH Remote Commands to Deploy
@@ -110,13 +111,18 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             
-            # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境)
-            if [ -f "out/xiaobao.conf" ]; then
-              echo "[Deploy] 发现编译后的 Nginx 配置文件，正在移至宝塔配置目录..."
+            # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境，支持自适应证书降级)
+            # 动态检测宿主机上是否放置了对应域名的物理证书文件
+            if [ -f "/etc/nginx/certs/${{ secrets.DOMAIN || 'xiaobao.work' }}.pem" ]; then
+              echo "[Deploy] 🛡️ 检测到 SSL 证书已就绪，正在应用 HTTPS 安全站点配置..."
               sudo mv out/xiaobao.conf /www/server/panel/vhost/nginx/xiaobao.conf
-              sudo /www/server/nginx/sbin/nginx -t
-              sudo /www/server/nginx/sbin/nginx -s reload
-              echo "[Deploy] ✓ 宿主机宝塔 Nginx 自动配置成功且重载完毕！"
+            else
+              echo "[Deploy] ⚠️ 未在宿主机检测到 SSL 证书物理文件，自适应降级部署 [纯 HTTP 站点]..."
+              sudo mv out/xiaobao.http /www/server/panel/vhost/nginx/xiaobao.conf
             fi
+            
+            sudo /www/server/nginx/sbin/nginx -t
+            sudo /www/server/nginx/sbin/nginx -s reload
+            echo "[Deploy] ✓ 宿主机宝塔 Nginx 自适应部署配置成功并安全重载！"
             
             docker image prune -f
