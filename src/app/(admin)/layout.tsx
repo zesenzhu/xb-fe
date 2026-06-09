@@ -49,7 +49,7 @@ const menuItems: MenuItem[] = [
   { name: '系统仪表盘', path: '/admin/dashboard', icon: LayoutDashboard },
   { name: '用户管理', path: '/admin/user', icon: Users, permission: 'user:list' },
   { name: '角色权限', path: '/admin/role', icon: ShieldAlert, permission: 'role:list' },
-  { name: '注册激活码', path: '/admin/code', icon: KeyRound, permission: 'code:list' },
+  { name: '激活码管理', path: '/admin/code', icon: KeyRound, permission: 'code:list' },
   { name: '脚本运行日志', path: '/admin/log', icon: FileCode2, permission: 'log:list' },
   { name: 'MQTT设备监控', path: '/admin/device', icon: Cpu, permission: 'device:list' },
   { name: '长连接模拟器', path: '/admin/device/test-simulator', icon: Terminal, permission: 'device:list' },
@@ -122,8 +122,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const breadcrumbs = generateBreadcrumbs();
 
+  // 辅助函数：判断菜单项是否处于选中态 (避免父子路径选中冲突)
+  const isMenuSelected = (itemPath: string) => {
+    if (pathname === itemPath) return true;
+    if (pathname.startsWith(`${itemPath}/`)) {
+      // 检查是否有更长且能匹配的其它菜单项
+      const hasBetterMatch = menuItems.some(
+        (other) => other.path !== itemPath && pathname.startsWith(other.path) && other.path.length > itemPath.length
+      );
+      return !hasBetterMatch;
+    }
+    return false;
+  };
+
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-foreground transition-colors duration-300">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-foreground transition-colors duration-300">
+
       
       {/* 1. 桌面端左侧边栏 */}
       <aside
@@ -150,7 +164,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+            const isActive = isMenuSelected(item.path);
 
             return (
               <Link
@@ -209,7 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <nav className="flex-1 space-y-1">
               {filteredMenuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+                const isActive = isMenuSelected(item.path);
 
                 return (
                   <Link
@@ -332,7 +346,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* 3. 子页面渲染主体 */}
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto animate-in fade-in duration-300">
+          <div className="w-full animate-in fade-in duration-300">
             {children}
           </div>
         </main>

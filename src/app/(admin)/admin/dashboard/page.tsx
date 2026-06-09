@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Users,
@@ -9,7 +9,6 @@ import {
   Bot,
   TrendingUp,
   ArrowUpRight,
-  ShieldAlert,
   Terminal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,72 +24,122 @@ import {
   Bar,
   Legend,
 } from 'recharts';
+import { api } from '@/lib/axios';
 
-// Mock 仪表盘基础卡片数据
-const cardData = [
-  {
-    title: '系统用户总数',
-    value: '1,248 人',
-    description: '较上周新增 +12%',
+// 核心指标卡片的 Lucide 图标与样式映射配置
+const cardConfigs: Record<string, { icon: any; color: string; bg: string; pulse?: boolean }> = {
+  userCount: {
     icon: Users,
     color: 'text-indigo-600 dark:text-indigo-400',
     bg: 'bg-indigo-50 dark:bg-indigo-950/20',
   },
-  {
-    title: '激活注册码',
-    value: '3,842 个',
-    description: '全系统激活率高达 94.2%',
+  activeCodes: {
     icon: KeyRound,
     color: 'text-emerald-600 dark:text-emerald-400',
     bg: 'bg-emerald-50 dark:bg-emerald-950/20',
   },
-  {
-    title: 'MQTT设备状态',
-    value: '142 / 150 台',
-    description: '当前在线率 94.6%',
+  onlineDevices: {
     icon: Cpu,
     color: 'text-sky-600 dark:text-sky-400',
     bg: 'bg-sky-50 dark:bg-sky-950/20',
-    pulse: true, // 启用在线绿色呼吸灯
+    pulse: true,
   },
-  {
-    title: 'AI 调用 Token 数',
-    value: '1,248,500 条',
-    description: '本月调用额度 较上月 -3.4%',
+  aiTokens: {
     icon: Bot,
     color: 'text-amber-600 dark:text-amber-400',
     bg: 'bg-amber-50 dark:bg-amber-950/20',
   },
-];
-
-// Mock 图表 1: 设备负载与日志报错趋势
-const trendData = [
-  { time: '00:00', 脚本报错: 4, 设备负载: 30, AI调用: 20 },
-  { time: '04:00', 脚本报错: 2, 设备负载: 25, AI调用: 10 },
-  { time: '08:00', 脚本报错: 15, 设备负载: 65, AI调用: 85 },
-  { time: '12:00', 脚本报错: 22, 设备负载: 80, AI调用: 120 },
-  { time: '16:00', 脚本报错: 8, 设备负载: 55, AI调用: 90 },
-  { time: '20:00', 脚本报错: 12, 设备负载: 70, AI调用: 110 },
-  { time: '24:00', 脚本报错: 5, 设备负载: 40, AI调用: 45 },
-];
-
-// Mock 图表 2: AI Agent 耗时与消耗统计
-const modelData = [
-  { name: 'DeepSeek-V3', 'tokens(k)': 400, '耗时(ms)': 450 },
-  { name: 'DeepSeek-R1', 'tokens(k)': 320, '耗时(ms)': 1200 },
-  { name: 'GPT-4o', 'tokens(k)': 280, '耗时(ms)': 600 },
-  { name: 'Claude-3.5', 'tokens(k)': 180, '耗时(ms)': 850 },
-];
-
-// Mock 最新系统运行告警日志
-const recentLogs = [
-  { id: '1', level: 'ERROR', message: 'MQTT 异常断开: 客户端 ID device_mac_08A3 发生保活超时 (PingResp 未收到)', time: '14:42:01', device: 'DEVICE-01' },
-  { id: '2', level: 'WARN', message: '注册激活管控: 激活码 SEC-80321F5 进行异常高频调用拦截 (IP: 182.92.112.5)', time: '14:40:12', device: 'WEB-API' },
-  { id: '3', level: 'ERROR', message: '脚本引擎崩溃: 自动化刷怪脚本 executor.js 发生致命语法引用溢出 (NullPointer)', time: '14:38:55', device: 'DEVICE-03' },
-  { id: '4', level: 'INFO', message: 'AI 控制台: 模型参数热重载完毕，当前并发上限已设置为 20 QPS', time: '14:35:10', device: 'AI-AGENT' },
-];
+};
 
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      const res: any = await api.get('/dashboard/overview');
+      setData(res);
+    } catch (err) {
+      console.error('[Dashboard] 无法拉取仪表盘监控指标:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    // 每 10 秒轮询拉取最新数据，保持仪表盘数据的实时更新
+    const timer = setInterval(fetchDashboardData, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 1. 骨架屏加载过渡，极致 premium 的用户体验
+  if (loading && !data) {
+    return (
+      <div className="space-y-6 select-none">
+        {/* 顶部标题骨架屏 */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 bg-slate-200 dark:bg-zinc-800 rounded w-48 animate-pulse"></div>
+            <div className="h-4 bg-slate-100 dark:bg-zinc-800/80 rounded w-80 animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* 四大指标卡片骨架屏 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden animate-pulse">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <div className="h-4 bg-slate-200 dark:bg-zinc-800 rounded w-24"></div>
+                <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-zinc-800"></div>
+              </CardHeader>
+              <CardContent className="pt-2 space-y-3">
+                <div className="h-8 bg-slate-200 dark:bg-zinc-800 rounded w-24"></div>
+                <div className="h-3 bg-slate-200 dark:bg-zinc-800 rounded w-32"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* 图表骨架屏 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm h-[360px] animate-pulse">
+            <CardHeader className="space-y-2">
+              <div className="h-5 bg-slate-200 dark:bg-zinc-800 rounded w-60"></div>
+              <div className="h-3 bg-slate-100 dark:bg-zinc-850 rounded w-96"></div>
+            </CardHeader>
+            <CardContent className="h-[250px] flex items-center justify-center p-6">
+              <div className="w-full h-full bg-slate-50 dark:bg-zinc-850/50 rounded-lg"></div>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm h-[360px] animate-pulse">
+            <CardHeader className="space-y-2">
+              <div className="h-5 bg-slate-200 dark:bg-zinc-800 rounded w-40"></div>
+              <div className="h-3 bg-slate-105 dark:bg-zinc-850 rounded w-60"></div>
+            </CardHeader>
+            <CardContent className="h-[250px] flex items-center justify-center p-6">
+              <div className="w-full h-full bg-slate-50 dark:bg-zinc-850/50 rounded-lg"></div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // 兜底空状态，如果接口出错
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+        <p className="text-sm">暂未拉取到监控大屏数据，请检查后端服务是否启动正常。</p>
+        <Button onClick={fetchDashboardData} className="mt-4 text-xs font-semibold">
+          重新拉取
+        </Button>
+      </div>
+    );
+  }
+
+  const { cards, trendData, modelData, recentLogs } = data;
+
   return (
     <div className="space-y-6 select-none animate-in fade-in duration-300">
       
@@ -103,8 +152,8 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900">
-            查看详情
+          <Button onClick={fetchDashboardData} variant="outline" size="sm" className="text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900">
+            手动刷新
           </Button>
           <Button size="sm" className="text-xs font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 flex items-center gap-1">
             数据导出
@@ -115,8 +164,9 @@ export default function DashboardPage() {
 
       {/* 1. 四大核心指标卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cardData.map((card) => {
-          const Icon = card.icon;
+        {cards.map((card: any) => {
+          const config = cardConfigs[card.key] || { icon: Bot, color: 'text-slate-600', bg: 'bg-slate-50' };
+          const Icon = config.icon;
 
           return (
             <Card key={card.title} className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
@@ -124,14 +174,14 @@ export default function DashboardPage() {
                 <CardTitle className="text-xs font-bold text-slate-500 dark:text-zinc-400 tracking-wider">
                   {card.title}
                 </CardTitle>
-                <div className={`p-2 rounded-lg ${card.bg} ${card.color}`}>
+                <div className={`p-2 rounded-lg ${config.bg} ${config.color}`}>
                   <Icon className="w-[18px] h-[18px]" />
                 </div>
               </CardHeader>
               <CardContent className="pt-2">
                 <div className="text-2xl font-black tracking-tight flex items-center gap-2">
                   {card.value}
-                  {card.pulse && (
+                  {config.pulse && (
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -252,7 +302,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
-                {recentLogs.map((log) => (
+                {recentLogs.map((log: any) => (
                   <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/10 transition-colors">
                     <td className="py-3 pr-4">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold ${
@@ -281,3 +331,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

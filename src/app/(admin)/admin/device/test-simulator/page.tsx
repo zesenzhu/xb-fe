@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button, Input, Select, Switch, Space, Tag, message, Alert } from 'antd';
+import { Button, Input, Select, Switch, Space, Tag, message, Alert, AutoComplete } from 'antd';
 import { 
   Terminal, Cpu, Play, Square, RefreshCw, Send, Zap, Clock, 
   Unlink, Link, ShieldCheck, HelpCircle, FileText, Database, AlertCircle 
@@ -14,6 +14,8 @@ interface RegisterCodeOption {
   code: string;
   deviceId: string | null;
   status: string;
+  currentActivations: number;
+  maxActivations: number;
 }
 
 interface TerminalLine {
@@ -65,7 +67,7 @@ export default function TestSimulatorPage() {
   const [codeOptions, setCodeOptions] = useState<RegisterCodeOption[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [deviceId, setDeviceId] = useState<string>('');
-  const [appName, setAppName] = useState<string>('XB-SimulatorDevice');
+  const [boundDeviceIds, setBoundDeviceIds] = useState<string[]>([]);
 
   // 连接状态: 'disconnected' | 'connecting' | 'connected'
   const [connState, setConnState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -87,24 +89,55 @@ export default function TestSimulatorPage() {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalPollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 异步获取当前激活码已经绑定的所有设备 ID 列表
+  const fetchBoundDevices = async (code: string) => {
+    try {
+      const response: any = await api.get('/register-codes/my-devices', {
+        params: { code },
+      });
+      const ids = (response || []).map((d: any) => d.id);
+      setBoundDeviceIds(ids);
+      
+      // 如果有绑定的物理设备，默认带入第一个已绑定的设备
+      if (ids.length > 0) {
+        setDeviceId(ids[0]);
+      } else {
+        setDeviceId(`DEV-SIM-${Math.floor(100 + Math.random() * 900)}`);
+      }
+    } catch (err) {
+      setBoundDeviceIds([]);
+      setDeviceId(`DEV-SIM-${Math.floor(100 + Math.random() * 900)}`);
+    }
+  };
+
   // 1. 初始化拉取可用注册码列表
   useEffect(() => {
     const loadCodes = async () => {
       try {
         const response: any = await api.get('/register-codes', {
-          params: { page: 1, limit: 100 },
+          params: { page: 1, limit: 500 },
         });
         const list = response.list || [];
-        setCodeOptions(list);
+        
+        // 自适应排序优化：让 XB-TEST 前缀的测试卡与当前有绑定设备的活跃卡置顶，方便管理员测试
+        const sorted = [...list].sort((a: any, b: any) => {
+          const aIsTest = a.code.startsWith('XB-TEST') ? 1 : 0;
+          const bIsTest = b.code.startsWith('XB-TEST') ? 1 : 0;
+          if (aIsTest !== bIsTest) return bIsTest - aIsTest;
+          
+          return b.currentActivations - a.currentActivations;
+        });
+
+        setCodeOptions(sorted);
         
         // 默认带入第一个测试码
-        const testCode = list.find((o: any) => o.code.startsWith('XB-TEST'));
+        const testCode = sorted.find((o: any) => o.code.startsWith('XB-TEST'));
         if (testCode) {
           setSelectedCode(testCode.code);
-          setDeviceId(testCode.deviceId || 'DEV-SIM-999');
-        } else if (list.length > 0) {
-          setSelectedCode(list[0].code);
-          setDeviceId(list[0].deviceId || 'DEV-SIM-999');
+          fetchBoundDevices(testCode.code);
+        } else if (sorted.length > 0) {
+          setSelectedCode(sorted[0].code);
+          fetchBoundDevices(sorted[0].code);
         }
       } catch (err) {
         message.error('加载系统注册码数据失败');
@@ -121,10 +154,7 @@ export default function TestSimulatorPage() {
   // 更改注册码时，同步带入绑定的设备
   const handleCodeChange = (val: string) => {
     setSelectedCode(val);
-    const matched = codeOptions.find(o => o.code === val);
-    if (matched) {
-      setDeviceId(matched.deviceId || `DEV-SIM-${Math.floor(100 + Math.random() * 900)}`);
-    }
+    fetchBoundDevices(val);
   };
 
   // 生成一条随机模版日志
@@ -201,7 +231,7 @@ export default function TestSimulatorPage() {
       const res: any = await api.post('/tcp-simulator/connect', {
         code: selectedCode,
         deviceId,
-        appName,
+        appName: 'XB-SimulatorDevice',
       });
       message.success(res.message || 'TCP 模拟器长连接握手鉴权成功！');
       setConnState('connected');
@@ -425,39 +455,33 @@ export default function TestSimulatorPage() {
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-1.5">1. 测试授权注册码 (系统注入)</label>
                 <Select
+                  showSearch
                   value={selectedCode || undefined}
                   onChange={handleCodeChange}
-                  placeholder="选择用于鉴权的注册激活卡..."
+                  placeholder="搜索并选择用于鉴权的注册激活卡..."
                   className="w-full h-9"
                   disabled={connState !== 'disconnected'}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
                   options={codeOptions.map(o => ({
                     value: o.code,
-                    label: `${o.code} (${o.deviceId ? '已绑定' : '全新未激活'})`,
+                    label: `${o.code} (已绑定: ${o.currentActivations}/${o.maxActivations} 台)`,
                   }))}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1.5">2. 虚拟模拟设备ID</label>
-                  <Input
-                    value={deviceId}
-                    onChange={(e) => setDeviceId(e.target.value)}
-                    placeholder="设备 ID 标识..."
-                    className="h-9 border-slate-200 dark:border-zinc-800 font-mono font-bold"
-                    disabled={connState !== 'disconnected'}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1.5">3. 虚拟应用名称</label>
-                  <Input
-                    value={appName}
-                    onChange={(e) => setAppName(e.target.value)}
-                    placeholder="应用标识..."
-                    className="h-9 border-slate-200 dark:border-zinc-800 font-semibold"
-                    disabled={connState !== 'disconnected'}
-                  />
-                </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1.5">2. 虚拟模拟设备ID (支持选择已绑定设备或输入新设备ID进行测试)</label>
+                <AutoComplete
+                  value={deviceId}
+                  onChange={(val) => setDeviceId(val)}
+                  options={boundDeviceIds.map(id => ({ value: id, label: `已绑定: ${id}` }))}
+                  placeholder="选择已绑定设备，或直接输入新设备ID..."
+                  className="w-full font-mono font-bold"
+                  style={{ height: '36px' }}
+                  disabled={connState !== 'disconnected'}
+                />
               </div>
 
               <div className="pt-2 flex gap-3">

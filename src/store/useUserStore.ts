@@ -13,7 +13,9 @@ export interface UserProfile {
     name: string;
     code: string;
   };
+  deviceId?: string;
 }
+
 
 // UserStore 状态接口定义
 interface UserState {
