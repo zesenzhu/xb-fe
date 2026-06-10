@@ -93,7 +93,8 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
     disconnectSocket(); // 主动断开 WebSockets 长链接
     clearAuth();
     toast.success('您已成功安全退出控制终端');
-    router.push('/user/login');
+    // 强力使用 window.location.href 进行整页重载跳转，彻底清理 React 内存状态并绕过 Next.js 路由缓存
+    window.location.href = '/user/login';
   };
 
   return (
