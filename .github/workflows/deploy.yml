@@ -54,12 +54,13 @@ jobs:
       - name: Render Nginx Template
         env:
           DOMAIN: ${{ secrets.DOMAIN || 'xiaobao.work' }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
           BACKEND_PORT: ${{ secrets.BACKEND_PORT || '8081' }}
           FRONTEND_PORT: ${{ secrets.FRONTEND_PORT || '8080' }}
         run: |
           mkdir -p out
-          envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.conf.template > out/xiaobao.conf
-          envsubst '${DOMAIN} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.http.template > out/xiaobao.http
+          envsubst '${DOMAIN} ${SERVER_HOST} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.conf.template > out/xiaobao.conf
+          envsubst '${DOMAIN} ${SERVER_HOST} ${BACKEND_PORT} ${FRONTEND_PORT}' < .nginx/xiaobao.http.template > out/xiaobao.http
 
       - name: Copy docker-compose, .env, config and image tar via SCP
         uses: appleboy/scp-action@v0.1.7

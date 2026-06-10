@@ -1,8 +1,8 @@
 # 纯 HTTP 降级/过渡反向代理配置
 server {
     listen 80;
-    # 支持域名以及 IP 直接访问（使用 _ 兜底匹配所有未匹配的 host）
-    server_name ${DOMAIN} _;
+    # 支持域名以及 IP 直接访问（使用 SERVER_HOST 变量进行精确 IP 匹配，以防被宝塔默认站点拦截）
+    server_name ${DOMAIN} ${SERVER_HOST};
 
     # ⚡ 规则 A：转发所有以 /api/ 开头的 API 接口请求到后端 NestJS 服务 (默认 8081)
     location /api/ {

@@ -1,7 +1,7 @@
 # 1. HTTP 网关 (同时支持 IP 访问与域名重定向)
 server {
     listen 80;
-    server_name ${DOMAIN} _;
+    server_name ${DOMAIN} ${SERVER_HOST};
 
     # 💡 智能判断：如果是用域名访问的 HTTP，自动重定向到 HTTPS
     if ($host = "${DOMAIN}") {
