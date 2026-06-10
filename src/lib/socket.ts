@@ -13,7 +13,8 @@ export const getSocket = (): Socket => {
   }
 
   if (!socket) {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8081';
+    // 优先使用环境变量配好的 WS 地址。如果为空，在客户端则自动跟随当前主域(域名或IP)，在服务端则默认回退 localhost:8081
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081');
     
     socket = io(wsUrl, {
       autoConnect: false, // 不默认自动连接，由鉴权成功后的页面控制连接，防止无效握手
