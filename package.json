@@ -50,6 +50,7 @@
     "@types/react-window": "^1.8.8",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "sass": "^1.100.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
@@ -61,4 +62,3 @@
     ]
   }
 }
-

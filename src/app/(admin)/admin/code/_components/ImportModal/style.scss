@@ -1,0 +1,10 @@
+/* ImportModal 专属样式 */
+.import-modal-content {
+  .drag-container {
+    /* 拖拽上传框的过渡动画和特定高度 */
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

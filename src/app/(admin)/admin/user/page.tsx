@@ -254,7 +254,7 @@ export default function UserPage() {
         <PermissionGuard permission="user:create">
           <Button
             type="primary"
-            className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold text-xs flex items-center gap-1 h-9"
+            className="font-bold text-xs flex items-center gap-1 h-9"
             onClick={handleOpenModal}
           >
             <Plus className="w-4 h-4" />
@@ -322,7 +322,7 @@ export default function UserPage() {
           </Form.Item>
           <div className="flex justify-end gap-2 pt-3">
             <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-            <Button type="primary" htmlType="submit" className="bg-slate-900 hover:bg-slate-800">
+            <Button type="primary" htmlType="submit">
               确认创建
             </Button>
           </div>
@@ -360,7 +360,7 @@ export default function UserPage() {
           </Form.Item>
           <div className="flex justify-end gap-2 pt-3">
             <Button onClick={() => setIsEditModalOpen(false)}>取消</Button>
-            <Button type="primary" htmlType="submit" className="bg-slate-900 hover:bg-slate-800">
+            <Button type="primary" htmlType="submit">
               保存修改
             </Button>
           </div>
@@ -407,7 +407,7 @@ export default function UserPage() {
           </Form.Item>
           <div className="flex justify-end gap-2 pt-3">
             <Button onClick={() => setIsPasswordModalOpen(false)}>取消</Button>
-            <Button type="primary" htmlType="submit" className="bg-slate-900 hover:bg-slate-800">
+            <Button type="primary" htmlType="submit">
               确认修改
             </Button>
           </div>

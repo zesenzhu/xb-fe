@@ -143,7 +143,7 @@ export default function DevicePage() {
                   type="primary"
                   size="small"
                   disabled={!isOnline}
-                  className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold text-[10px] h-7"
+                  className="font-bold text-[10px] h-7"
                   onClick={() => handleOpenCommand(dev)}
                 >
                   远程指令
@@ -223,7 +223,7 @@ export default function DevicePage() {
           </Form.Item>
           <div className="flex justify-end gap-2 pt-3">
             <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-            <Button type="primary" htmlType="submit" className="bg-slate-900 hover:bg-slate-800 flex items-center gap-1">
+            <Button type="primary" htmlType="submit" className="flex items-center gap-1">
               <Play className="w-3.5 h-3.5" />
               推送指令
             </Button>

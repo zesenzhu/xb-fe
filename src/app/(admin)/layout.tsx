@@ -23,6 +23,7 @@ import {
   Bell,
   ChevronRight,
   Terminal,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -64,6 +65,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const d = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const year = d.getFullYear();
+      const month = pad(d.getMonth() + 1);
+      const day = pad(d.getDate());
+      const hours = pad(d.getHours());
+      const minutes = pad(d.getMinutes());
+      const seconds = pad(d.getSeconds());
+      setCurrentTime(`${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 保证客户端完全挂载后再处理状态，防止 Hydration Error
   useEffect(() => {
@@ -289,6 +308,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Bell className="w-4.5 h-4.5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
+
+            {/* 实时时间显示 */}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800/60 border border-slate-200/60 dark:border-zinc-800 text-xs font-mono font-bold text-slate-600 dark:text-zinc-400 select-none">
+              <Clock className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span>{currentTime}</span>
+            </div>
 
             {/* 暗黑/明亮模式极光微动切换 */}
             <Button

@@ -1,0 +1,14 @@
+/* CodeFilter 专属样式 */
+.code-filter-container {
+  /* 确保在大屏幕下输入框能硬性保持宽度限制，不被 flex-grow 拉伸 */
+  @media (min-width: 640px) {
+    .filter-input-code {
+      width: 180px !important;
+      min-width: 180px !important;
+    }
+    .filter-input-device {
+      width: 160px !important;
+      min-width: 160px !important;
+    }
+  }
+}

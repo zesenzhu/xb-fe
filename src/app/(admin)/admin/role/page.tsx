@@ -159,7 +159,7 @@ export default function RolePage() {
         </div>
         <Button
           type="primary"
-          className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold text-xs flex items-center gap-1 h-9"
+          className="font-bold text-xs flex items-center gap-1 h-9"
           onClick={() => message.info('新建角色表单模块正在联调中')}
         >
           <Plus className="w-4 h-4" />
@@ -229,7 +229,7 @@ export default function RolePage() {
                 type="primary"
                 onClick={handleSavePermissions}
                 loading={saveLoading}
-                className="bg-slate-900 hover:bg-slate-800 text-xs font-bold flex items-center gap-1 h-8"
+                className="text-xs font-bold flex items-center gap-1 h-8"
               >
                 <Save className="w-3.5 h-3.5" />
                 保存角色配置

@@ -1,0 +1,8 @@
+/* CodeTable 专属样式 */
+.code-table-container {
+  /* 保证表格滚动平滑且不溢出 */
+  .ant-table-body {
+    overflow-y: auto !important;
+  }
+}
+

@@ -55,7 +55,8 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
               ? antdTheme.darkAlgorithm
               : antdTheme.defaultAlgorithm,
             token: {
-              colorPrimary: isDark ? '#ffffff' : '#0f172a', // 💡 在暗色模式下使用白色以提供高对比度
+              colorPrimary: isDark ? '#6366f1' : '#4f46e5', // 在暗色模式下使用亮靛蓝，亮色下使用靛蓝
+              colorTextLightSolid: '#ffffff', // 💡 确保无论是亮色还是暗色，主色按钮文字都显示为白色以获得高对比度
               borderRadius: 6,
               fontFamily: 'inherit',
             },
