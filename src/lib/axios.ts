@@ -84,9 +84,12 @@ api.interceptors.response.use(
 
       try {
         // 使用一个独立的全新 Axios 实例去发起刷新 Token 请求，避免拦截器死循环
-        // NestJS 后端接收该请求，读取 HttpOnly 的 refresh_token，并 Set-Cookie 返回新的 access_token
+        // 根据当前路径是 /user 还是 /admin 动态选择对应的 refresh 路由
+        const isUserPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/user');
+        const refreshPath = isUserPath ? '/auth/user/refresh' : '/auth/admin/refresh';
+
         await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api'}/auth/refresh`,
+          `${api.defaults.baseURL}${refreshPath}`,
           {},
           { withCredentials: true }
         );
