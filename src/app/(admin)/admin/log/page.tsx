@@ -83,7 +83,7 @@ export default function LogPage() {
 
     message.loading({ content: '正在尝试连接设备长通道...', key: 'monitor_conn' });
 
-    const es = new EventSource(sseUrl);
+    const es = new EventSource(sseUrl, { withCredentials: true });
     eventSourceRef.current = es;
 
     es.onopen = () => {

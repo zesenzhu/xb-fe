@@ -83,19 +83,15 @@ export default function UserLogPage() {
 
         // 自动选择默认设备 ID
         setActiveDeviceId((current) => {
-          if (current) {
-            // 如果已选择的设备还在列表内，或者大屏本身的设备 ID 是已选择设备，保持不变
-            const exists = list.some((d: any) => d.id === current);
-            if (exists || current === user?.deviceId) {
-              return current;
-            }
-          }
-          // 否则，如果物理设备列表不为空，默认选择第一个物理设备
           if (list.length > 0) {
-            return list[0].id;
+            const exists = list.some((d: any) => d.id === current);
+            // 如果当前选择的不在物理列表内，或者当前的只是默认的浏览器大屏设备，则自动切为第一个物理设备
+            if (!exists || current === user?.deviceId) {
+              return list[0].id;
+            }
+            return current;
           }
-          // 再次兜底使用大屏本身的设备 ID
-          return user?.deviceId || '';
+          return current || user?.deviceId || '';
         });
       } catch (err) {
         console.error('[Logs] 获取绑定的设备列表失败:', err);
@@ -141,7 +137,7 @@ export default function UserLogPage() {
     const sseUrl = `${apiUrl}/logs/stream?deviceId=${activeDeviceId}&code=${code || ''}`;
     
     console.log('[SSE] 正在建立实时日志流连接:', sseUrl);
-    const eventSource = new EventSource(sseUrl);
+    const eventSource = new EventSource(sseUrl, { withCredentials: true });
 
     eventSource.onmessage = (event) => {
       try {
