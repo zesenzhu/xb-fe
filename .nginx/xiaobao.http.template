@@ -39,3 +39,41 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# ⚡ 增加的 8080 端口代理块（为当前通过 8080 端口直接访问服务的过渡期设计，防止接口报 404）
+server {
+    listen 8080;
+    server_name ${DOMAIN} ${SERVER_HOST};
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/api/; 
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 优化实时日志流 (SSE) 推送通道，防止超时被 Nginx 掐断
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:${FRONTEND_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
