@@ -55,7 +55,7 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
               ? antdTheme.darkAlgorithm
               : antdTheme.defaultAlgorithm,
             token: {
-              colorPrimary: '#0f172a', // 深石板灰色，呼应 shadcn/ui 的高冷质感
+              colorPrimary: isDark ? '#ffffff' : '#0f172a', // 💡 在暗色模式下使用白色以提供高对比度
               borderRadius: 6,
               fontFamily: 'inherit',
             },
