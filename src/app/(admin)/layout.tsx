@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useGlobalStore } from '@/store/useGlobalStore';
 import { useUserStore } from '@/store/useUserStore';
-import { cn } from '@/lib/utils';
+import { cn, getFileUrl } from '@/lib/utils';
 import {
   LayoutDashboard,
   Users,
@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Terminal,
   Clock,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +55,7 @@ const menuItems: MenuItem[] = [
   { name: '脚本运行日志', path: '/admin/log', icon: FileCode2, permission: 'log:list' },
   { name: 'MQTT设备监控', path: '/admin/device', icon: Cpu, permission: 'device:list' },
   { name: '长连接模拟器', path: '/admin/device/test-simulator', icon: Terminal, permission: 'device:list' },
+  { name: '接口调试沙箱', path: '/admin/api-test', icon: Terminal, permission: 'admin:only' },
   { name: 'AI Agent控制台', path: '/admin/ai', icon: Bot, permission: 'ai:list' },
 ];
 
@@ -117,6 +119,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // 根据当前路径与权限过滤菜单
   const filteredMenuItems = menuItems.filter((item) => {
+    if (item.permission === 'admin:only') {
+      return user?.role?.code === 'admin';
+    }
     if (!item.permission) return true;
     return (
       permissions.includes('*') ||
@@ -138,10 +143,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     });
 
+    // 兜底路径名映射
+    if (breadcrumbs.length === 1 && pathname !== '/admin/dashboard') {
+      if (pathname === '/admin/profile') {
+        breadcrumbs.push({ name: '个人中心', path: '/admin/profile' });
+      } else if (pathname === '/admin/settings') {
+        breadcrumbs.push({ name: '系统设置', path: '/admin/settings' });
+      } else {
+        // 其他未知页面
+        const lastPart = paths[paths.length - 1];
+        if (lastPart) {
+          breadcrumbs.push({ name: lastPart.toUpperCase(), path: pathname });
+        }
+      }
+    }
+
     return breadcrumbs;
   };
 
   const breadcrumbs = generateBreadcrumbs();
+
+  // 动态计算是否显示左侧 Sidebar 侧边栏菜单
+  const showSidebar = menuItems.some(
+    (item) => pathname === item.path || pathname.startsWith(item.path + '/')
+  );
 
   // 辅助函数：判断菜单项是否处于选中态 (避免父子路径选中冲突)
   const isMenuSelected = (itemPath: string) => {
@@ -159,23 +184,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-foreground transition-colors duration-300">
 
-      
       {/* 1. 桌面端左侧边栏 */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 transition-all duration-300 ease-in-out select-none",
-          sidebarCollapsed ? "w-16" : "w-64"
-        )}
-      >
+      {showSidebar && (
+        <aside
+          className={cn(
+            "hidden md:flex flex-col bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 transition-all duration-300 ease-in-out select-none",
+            sidebarCollapsed ? "w-16" : "w-64"
+          )}
+        >
         {/* LOGO 区域 */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-zinc-800/50">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold tracking-wider overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center shrink-0">
-              <span className="text-white dark:text-black font-extrabold text-sm">XB</span>
+              <span className="text-white dark:text-black font-extrabold text-sm">宝</span>
             </div>
             {!sidebarCollapsed && (
               <span className="text-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent font-black whitespace-nowrap animate-in fade-in duration-300">
-                XBNEST PANEL
+                小宝修仙
               </span>
             )}
           </Link>
@@ -224,6 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Button>
         </div>
       </aside>
+      )}
 
       {/* 移动端侧边抽屉 */}
       {mobileOpen && (
@@ -236,7 +262,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={(e) => e.stopPropagation()}
           >
             <div className="h-16 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/50 mb-4">
-              <span className="font-extrabold text-lg">XBNEST PANEL</span>
+              <span className="font-extrabold text-lg">小宝修仙</span>
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
                 <ChevronLeft className="w-5 h-5" />
               </Button>
@@ -272,17 +298,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* 顶部通栏 Navbar */}
-        <header className="h-16 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between px-4 sticky top-0 z-40 select-none">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 sticky top-0 z-40 select-none flex items-center justify-center w-full">
+          <div className={cn(
+            "flex items-center justify-between w-full h-full px-4",
+            !showSidebar && "max-w-6xl mx-auto px-6 md:px-8"
+          )}>
+            <div className="flex items-center gap-4">
             {/* 移动端菜单激活按钮 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
+            {showSidebar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={() => setMobileOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            )}
 
             {/* 动态面包屑导航 (隐藏在极小屏幕下) */}
             <nav className="hidden sm:flex items-center gap-1 text-sm text-slate-500 dark:text-zinc-400">
@@ -334,8 +366,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* 用户下拉悬浮菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 pl-2 focus:outline-none hover:opacity-85 transition-opacity">
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-300 dark:border-zinc-700">
-                  {user?.username?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-300 dark:border-zinc-700 overflow-hidden">
+                  {user?.avatar ? (
+                    <img src={getFileUrl(user.avatar)} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    user?.username?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="hidden lg:flex flex-col items-start text-left shrink-0">
                   <span className="text-sm font-semibold leading-none">{user?.nickname || user?.username || '管理员'}</span>
@@ -354,10 +390,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="dark:bg-zinc-800" />
-                <DropdownMenuItem className="cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 gap-2">
+                <DropdownMenuItem
+                  onClick={() => router.push('/admin/profile')}
+                  className="cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 gap-2"
+                >
                   <UserIcon className="w-4 h-4" />
                   <span>个人中心</span>
                 </DropdownMenuItem>
+                {user?.role?.code === 'admin' && (
+                  <>
+                    <DropdownMenuSeparator className="dark:bg-zinc-800" />
+                    <DropdownMenuItem
+                      onClick={() => router.push('/admin/settings')}
+                      className="cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 gap-2"
+                    >
+                      <SettingsIcon className="w-4 h-4" />
+                      <span>系统设置</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator className="dark:bg-zinc-800" />
                 <DropdownMenuItem
                   onClick={handleLogout}
@@ -369,11 +420,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          </div>
         </header>
 
         {/* 3. 子页面渲染主体 */}
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-          <div className="w-full animate-in fade-in duration-300">
+          <div className={cn(
+            "w-full animate-in fade-in duration-300",
+            !showSidebar && "max-w-6xl mx-auto px-2 md:px-4"
+          )}>
             {children}
           </div>
         </main>

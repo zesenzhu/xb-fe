@@ -26,3 +26,13 @@ export function formatDateTime(dateStr: string | null | undefined, includeSecond
     return dateStr;
   }
 }
+
+export function getFileUrl(path?: string) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
+  const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+  return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+}

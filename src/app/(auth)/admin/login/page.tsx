@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { KeyRound, Mail, User, Loader2 } from 'lucide-react';
+import { KeyRound, User, Loader2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 
 // 使用 Zod 定义前端严格的表单校验架构
@@ -27,6 +28,21 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { setAuth } = useUserStore();
   const [loading, setLoading] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(false);
+
+  // 检测后台邮件功能是否开启
+  useEffect(() => {
+    const checkMailStatus = async () => {
+      try {
+        const response: any = await api.get('/system/settings/public');
+        setEmailEnabled(!!response.emailEnabled);
+      } catch (err) {
+        console.warn('获取系统邮件功能开启状态失败', err);
+        setEmailEnabled(false);
+      }
+    };
+    checkMailStatus();
+  }, []);
 
   // 初始化 React Hook Form 与 Zod 校验器
   const {
@@ -52,8 +68,10 @@ function LoginForm() {
       
       const userProfile: UserProfile = response.user;
       const permissions: string[] = response.permissions || [];
+      const accessToken: string = response.accessToken;
+      const refreshToken: string = response.refreshToken;
       
-      setAuth(userProfile, permissions);
+      setAuth(userProfile, permissions, accessToken, refreshToken);
       toast.success('登录成功，欢迎回来！');
       
       // 成功后重定向
@@ -79,10 +97,10 @@ function LoginForm() {
         {/* 控制台精美 LOGO */}
         <div className="flex flex-col items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg border border-slate-700/50">
-            <span className="text-slate-950 font-black text-2xl">XB</span>
+            <span className="text-slate-950 font-black text-2xl">宝</span>
           </div>
-          <h1 className="text-2xl font-black tracking-widest text-white">XBNEST CONSOLE</h1>
-          <p className="text-xs text-slate-400 font-medium">全栈智能后台设备控制系统</p>
+          <h1 className="text-2xl font-black tracking-widest text-white">小宝修仙</h1>
+          <p className="text-xs text-slate-400 font-medium">小宝修仙智能后台管理系统</p>
         </div>
 
         {/* 磨砂玻璃拟物登录卡片 */}
@@ -119,7 +137,11 @@ function LoginForm() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-slate-300 text-xs font-semibold">登录密码</Label>
-                  <a href="#" className="text-[11px] text-emerald-400 hover:underline">忘记密码？</a>
+                  {emailEnabled && (
+                    <Link href="/admin/forgot-password" className="text-[11px] text-emerald-400 hover:underline animate-in fade-in duration-300">
+                      忘记密码？
+                    </Link>
+                  )}
                 </div>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-500" />

@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { useUserStore } from '@/store/useUserStore';
 
 // 定义接口错误响应结构
 export interface ApiErrorResponse {
@@ -12,11 +13,11 @@ let isRefreshing = false;
 // 存储因 401 而被挂起的请求队列
 let failedQueue: Array<{
   resolve: (token: string) => void;
-  reject: (err: any) => void;
+  reject: (err: unknown) => void;
 }> = [];
 
 // 处理挂起的请求队列
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (token) {
       prom.resolve(token);
@@ -40,7 +41,15 @@ export const api: AxiosInstance = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // 后续如果需要在 Header 中手动附加其他逻辑（如客户端时区、设备号等）可在此处配置
+    // 动态提取当前作用域的 Token 并附加到 Headers 头部 (防跨端口/SameSite Cookie 丢失)
+    if (typeof window !== 'undefined') {
+      const isUserPath = window.location.pathname.startsWith('/user');
+      const state = useUserStore.getState();
+      const token = isUserPath ? state.clientAccessToken : state.adminAccessToken;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error) => {
@@ -82,17 +91,42 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      const isUserPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/user');
+      const state = useUserStore.getState();
+      const refreshToken = isUserPath ? state.clientRefreshToken : state.adminRefreshToken;
+
       try {
-        // 使用一个独立的全新 Axios 实例去发起刷新 Token 请求，避免拦截器死循环
-        // 根据当前路径是 /user 还是 /admin 动态选择对应的 refresh 路由
-        const isUserPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/user');
+        if (!refreshToken) {
+          throw new Error('未检测到本地刷新凭证 (Refresh Token)，请重新登录');
+        }
+
         const refreshPath = isUserPath ? '/auth/user/refresh' : '/auth/admin/refresh';
 
-        await axios.post(
+        // 使用独立的全新 Axios 实例，并使用 Body 将 refreshToken 传给后端
+        const refreshRes = await axios.post<{ accessToken: string; refreshToken: string }>(
           `${api.defaults.baseURL}${refreshPath}`,
-          {},
+          { refreshToken },
           { withCredentials: true }
         );
+
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshRes.data || {};
+
+        if (!newAccessToken || !newRefreshToken) {
+          throw new Error('签发的新 Token 无效，自动阻断重新登录');
+        }
+
+        // 更新 Zustand 状态中的 Token
+        if (isUserPath) {
+          useUserStore.setState({
+            clientAccessToken: newAccessToken,
+            clientRefreshToken: newRefreshToken,
+          });
+        } else {
+          useUserStore.setState({
+            adminAccessToken: newAccessToken,
+            adminRefreshToken: newRefreshToken,
+          });
+        }
 
         // 刷新成功，清空挂起队列并重新发起所有请求
         processQueue(null, 'refreshed');
@@ -101,12 +135,11 @@ api.interceptors.response.use(
         // 刷新 Token 失败（比如 RefreshToken 也过期了，或者账号被禁用）
         processQueue(refreshError, null);
 
-        // 强力清除客户端状态并跳转到登录页
+        // 清除 Zustand 中的缓存状态并引导重新登录
         if (typeof window !== 'undefined') {
-          // 清除任何本地存储的用户信息或标志 (如有)
+          const loginPath = isUserPath ? '/user/login' : '/admin/login';
           localStorage.removeItem('user-storage');
-          // 跳转至登录页，并带上退出原由
-          window.location.href = `/admin/login?expired=true&redirect=${encodeURIComponent(window.location.pathname)}`;
+          window.location.href = `${loginPath}?expired=true&redirect=${encodeURIComponent(window.location.pathname)}`;
         }
         return Promise.reject(refreshError);
       } finally {

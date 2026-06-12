@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   FileCode2,
   Cpu,
-  History,
+  Clock,
   LogOut,
   Sun,
   Moon,
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import Cookies from 'js-cookie';
+import { api } from '@/lib/axios';
 
 interface NavItem {
   name: string;
@@ -32,7 +33,6 @@ interface NavItem {
 const userNavItems: NavItem[] = [
   { name: '实时运行日志', path: '/user/log', icon: FileCode2 },
   { name: '我的物理设备', path: '/user/device', icon: Cpu },
-  { name: 'AI 任务记录', path: '/user/ai-record', icon: History },
 ];
 
 export default function UserPortalLayout({ children }: { children: React.ReactNode }) {
@@ -43,6 +43,24 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
 
   const [mounted, setMounted] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [timeStr, setTimeStr] = useState('');
+
+  // 增加实时时钟逻辑
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      setTimeStr(`${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 1. 双重安全网校验，并初始化 Socket 长连接通信
   useEffect(() => {
@@ -87,7 +105,12 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
   }
 
   // 用户端登出逻辑
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/user/logout');
+    } catch (err) {
+      console.error('退出登录调用接口失败:', err);
+    }
     Cookies.remove('user_access_token');
     Cookies.remove('user_refresh_token');
     disconnectSocket(); // 主动断开 WebSockets 长链接
@@ -110,7 +133,7 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
               <Sparkles className="w-4 h-4 text-white dark:text-zinc-950 shrink-0" />
             </div>
             <span className="text-sm font-black whitespace-nowrap bg-gradient-to-r from-slate-900 via-zinc-700 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent">
-              XBNETS PORTAL
+              小宝修仙
             </span>
           </Link>
           
@@ -167,6 +190,12 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
 
         {/* 右侧设置、主题与用户退出 */}
         <div className="flex items-center gap-3">
+          {/* 实时时间 (大屏显示，小屏自动隐藏，考虑分辨率布局) */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 select-none">
+            <Clock className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+            <span>{timeStr || '载入中...'}</span>
+          </div>
+
           <Button
             variant="ghost"
             size="icon"

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { List } from 'react-window';
+
 import {
   Terminal,
   Play,
@@ -217,14 +217,14 @@ export default function UserLogPage() {
     <div className="space-y-4 select-none">
       
       {/* 1. 面板标题头与折叠控制开关 */}
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800/40 pb-2.5">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-zinc-800/40 pb-2.5">
         <div className="flex items-center gap-2">
-          <Terminal className="w-4.5 h-4.5 text-emerald-400 animate-pulse" />
-          <h1 className="text-sm sm:text-base font-black text-white">
+          <Terminal className="w-4.5 h-4.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+          <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-white">
             用户端实时运行终端
           </h1>
           {controlsCollapsed && (
-            <span className="text-[9px] bg-zinc-900 border border-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-500 font-extrabold uppercase animate-in fade-in duration-200">
+            <span className="text-[9px] bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-zinc-500 font-extrabold uppercase animate-in fade-in duration-200">
               已收起控制栏
             </span>
           )}
@@ -235,7 +235,7 @@ export default function UserLogPage() {
           variant="ghost"
           size="sm"
           onClick={() => setControlsCollapsed(!controlsCollapsed)}
-          className="text-[11px] font-bold gap-1 h-7 px-2 sm:px-2.5 rounded-lg hover:bg-zinc-900 text-zinc-400 hover:text-white"
+          className="text-[11px] font-bold gap-1 h-7 px-2 sm:px-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-zinc-850"
         >
           {controlsCollapsed ? (
             <>
@@ -256,19 +256,17 @@ export default function UserLogPage() {
         <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
           {/* 数据导出与暂停按钮 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] text-zinc-500 font-semibold hidden sm:block">
-                已建立与 NestJS 高并发日志物理通道的连接，集成了高性能虚拟化渲染
-              </p>
-            </div>
+            <div />
             
             <div className="flex items-center gap-2 ml-auto sm:ml-0">
               <Button
                 variant={isLive ? "default" : "outline"}
                 onClick={() => setIsLive(!isLive)}
                 className={cn(
-                  "text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl transition-all active:scale-97 border-zinc-800",
-                  isLive ? "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:text-zinc-950 shadow-lg shadow-emerald-500/10" : "bg-zinc-900 text-zinc-300"
+                  "text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl transition-all active:scale-97 border",
+                  isLive 
+                    ? "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:text-zinc-950 shadow-lg shadow-emerald-500/10 border-transparent" 
+                    : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800/80"
                 )}
               >
                 {isLive ? (
@@ -287,7 +285,7 @@ export default function UserLogPage() {
               <Button
                 variant="outline"
                 onClick={handleExport}
-                className="text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                className="text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:text-slate-900 dark:hover:text-white"
               >
                 <Download className="w-3 h-3" />
                 导出日志
@@ -295,50 +293,50 @@ export default function UserLogPage() {
             </div>
           </div>
 
-          {/* 高级联合检索过滤器 - 移动端极致布局 */}
-          <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-2.5 sm:p-4 flex flex-col md:flex-row gap-2.5 sm:gap-4 items-center justify-between shadow-lg">
+          {/* 高级联合检索过滤器 - 移动端高级双配色布局 */}
+          <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-2.5 sm:p-4 flex flex-col md:flex-row gap-2.5 sm:gap-4 items-center justify-between shadow-sm dark:shadow-lg">
             {/* 左侧筛选与搜索 - 移动端并排 */}
             <div className="flex items-center gap-2 w-full md:w-auto">
               <select
                 value={levelFilter}
                 onChange={(e: any) => setLevelFilter(e.target.value)}
-                className="h-9 px-2 w-1/2 sm:w-36 bg-zinc-950 border border-zinc-800 text-xs rounded-xl focus:outline-none focus:border-zinc-700 font-bold"
+                className="h-9 px-2 w-1/2 sm:w-36 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 text-xs rounded-xl focus:outline-none focus:border-slate-400 dark:focus:border-zinc-700 font-bold"
               >
-                <option value="ALL">全部告警等级</option>
-                <option value="INFO">INFO (正常自检)</option>
-                <option value="WARN">WARN (异常波动)</option>
-                <option value="ERROR">ERROR (致命故障)</option>
+                <option value="ALL" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">全部告警等级</option>
+                <option value="INFO" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">INFO (正常自检)</option>
+                <option value="WARN" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">WARN (异常波动)</option>
+                <option value="ERROR" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">ERROR (致命故障)</option>
               </select>
               
               <div className="relative w-1/2 sm:w-56">
-                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-zinc-600" />
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 dark:text-zinc-650" />
                 <Input
                   placeholder="关键字检索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8.5 h-9 bg-zinc-950 border-zinc-800 text-white text-xs placeholder-zinc-700 focus-visible:ring-emerald-500/25 rounded-xl"
+                  className="pl-8.5 h-9 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-850 dark:text-white text-xs placeholder-slate-400 dark:placeholder-zinc-750 focus-visible:ring-emerald-500/25 rounded-xl"
                 />
               </div>
             </div>
 
             {/* 右侧自动滚动定位与行数 - 移动端横向紧凑分布 */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 w-full md:w-auto border-t border-zinc-800/30 pt-2.5 md:pt-0 md:border-0">
+            <div className="flex items-center justify-between sm:justify-end gap-3 w-full md:w-auto border-t border-slate-100 dark:border-zinc-800/30 pt-2.5 md:pt-0 md:border-0">
               <Button
                 variant="ghost"
                 onClick={() => setAutoScroll(!autoScroll)}
                 className={cn(
                   "text-[10px] h-7 font-bold border rounded-xl px-2.5 transition-colors",
                   autoScroll
-                    ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400"
-                    : "bg-zinc-950 border-zinc-800 text-zinc-500"
+                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                    : "bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500"
                 )}
               >
                 <ArrowDown className={cn("w-3 h-3 mr-1", autoScroll && 'animate-bounce')} />
                 {autoScroll ? '锁定尾部' : '开启滚屏'}
               </Button>
-              <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
-              <span className="text-[10px] text-zinc-500 font-extrabold flex items-center gap-1.5 uppercase select-text">
-                <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-extrabold flex items-center gap-1.5 uppercase select-text">
+                <Activity className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
                 缓冲区: {filteredLogs.length} 行
               </span>
             </div>
@@ -348,24 +346,24 @@ export default function UserLogPage() {
 
       {/* 3. 极速 react-window 虚拟列表大屏 */}
 
-      <div className="bg-zinc-950 border border-zinc-850 rounded-2xl overflow-hidden shadow-2xl relative">
+      <div className="bg-zinc-950 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850 rounded-2xl overflow-hidden shadow-2xl relative">
         {/* Terminal Header */}
-        <div className="bg-zinc-900 px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none">
+        <div className="bg-slate-100 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-850/60 px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none">
           {/* 左侧控制台标识 */}
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-red-500/80" />
             <span className="w-2 h-2 rounded-full bg-amber-500/80" />
             <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
-            <span className="text-[10px] font-mono text-zinc-500 font-extrabold ml-1.5 whitespace-nowrap">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 font-extrabold ml-1.5 whitespace-nowrap">
               xbnets-vlogs-console
             </span>
           </div>
 
           {/* 右侧设备通道切换器 */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto border-t border-zinc-800/40 pt-2 sm:pt-0 sm:border-t-0">
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto border-t border-slate-200 dark:border-zinc-800/40 pt-2 sm:pt-0 sm:border-t-0">
             <div className="flex items-center gap-1.5">
-              <Wifi className={cn("w-3.5 h-3.5 shrink-0", activeDeviceId ? "text-emerald-400" : "text-zinc-500")} />
-              <span className="text-[10px] font-mono font-bold text-zinc-500 shrink-0">设备通道:</span>
+              <Wifi className={cn("w-3.5 h-3.5 shrink-0", activeDeviceId ? "text-emerald-500 dark:text-emerald-400" : "text-slate-400 dark:text-zinc-500")} />
+              <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-500 shrink-0">设备通道:</span>
             </div>
             
             <select
@@ -375,20 +373,20 @@ export default function UserLogPage() {
                 setActiveDeviceId(newId);
                 setLogs([]); // 切换设备时清空历史日志缓存，防止混淆
               }}
-              className="bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-emerald-400 font-mono text-[10px] h-6 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 max-w-[190px] sm:max-w-xs truncate"
+              className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] h-6 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 max-w-[190px] sm:max-w-xs truncate"
             >
               {devicesList.map((dev) => (
-                <option key={dev.id} value={dev.id} className="bg-zinc-950 text-zinc-300">
+                <option key={dev.id} value={dev.id} className="bg-white dark:bg-zinc-950 text-slate-700 dark:text-zinc-300">
                   {dev.id} ({dev.status === 'online' ? '在线' : '离线'})
                 </option>
               ))}
               {user?.deviceId && !devicesList.some((d) => d.id === user.deviceId) && (
-                <option value={user.deviceId} className="bg-zinc-950 text-zinc-500">
+                <option value={user.deviceId} className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500">
                   {user.deviceId} (浏览器大屏-无日志)
                 </option>
               )}
               {devicesList.length === 0 && !user?.deviceId && (
-                <option value="" className="bg-zinc-950 text-zinc-500">
+                <option value="" className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500">
                   暂无绑定物理设备
                 </option>
               )}

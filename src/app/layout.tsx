@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/layout/Providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Next.js 后台控制面板",
-  description: "配合 NestJS 后端服务的控制管理平台",
+  title: "小宝修仙",
+  description: "小宝修仙智能后台管理平台",
 };
 
 export default function RootLayout({
@@ -26,7 +15,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
       suppressHydrationWarning // 允许 Next/AntD 混合渲染的主题属性差异
     >
       <body className="min-h-full flex flex-col antialiased">

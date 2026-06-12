@@ -57,7 +57,7 @@ export default function UserDevicePage() {
     try {
       await fetchDevices();
       toast.success(`设备 [ ${name} ] 网络保活心跳探测校验成功！`);
-    } catch (e) {
+    } catch {
       toast.error(`设备 [ ${name} ] 探测无回应，请检查物理链路`);
     } finally {
       setPingingMap((prev) => ({ ...prev, [id]: false }));
@@ -103,15 +103,17 @@ export default function UserDevicePage() {
       {/* 标头 */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-black text-white flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-emerald-400" />
+          <h1 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <Cpu className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
             我的端侧设备列表
           </h1>
-          <p className="text-[11px] text-zinc-500 font-semibold mt-1">
-            当前受监控端侧自研硬件，仅展示与您的注册激活码绑定的设备数据
-          </p>
         </div>
-        <Button onClick={fetchDevices} variant="outline" size="sm" className="text-xs font-bold border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300">
+        <Button 
+          onClick={fetchDevices} 
+          variant="outline" 
+          size="sm" 
+          className="text-xs font-bold border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300"
+        >
           手动刷新
         </Button>
       </div>
@@ -130,7 +132,7 @@ export default function UserDevicePage() {
             const isPinging = pingingMap[dev.id];
 
             return (
-              <Card key={dev.id} className="border-zinc-800 bg-zinc-900/60 backdrop-blur shadow-2xl relative overflow-hidden transition-all duration-300 hover:border-zinc-700">
+              <Card key={dev.id} className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 backdrop-blur shadow-sm dark:shadow-2xl relative overflow-hidden transition-all duration-300 hover:border-slate-350 dark:hover:border-zinc-700">
                 
                 {/* 右上角在线状态标签 */}
                 <div className="absolute top-4 right-4 flex items-center gap-1.5 select-none">
@@ -138,74 +140,74 @@ export default function UserDevicePage() {
                     {isOnline && (
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     )}
-                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-emerald-500' : 'bg-zinc-650'}`} />
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-zinc-650'}`} />
                   </span>
-                  <span className={`text-[9px] font-black tracking-widest ${isOnline ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  <span className={`text-[9px] font-black tracking-widest ${isOnline ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400 dark:text-zinc-500'}`}>
                     {isOnline ? 'ONLINE' : 'OFFLINE'}
                   </span>
                 </div>
 
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-950 flex items-center justify-center border border-zinc-850 shadow">
-                      <Cpu className={cn("w-5 h-5", isOnline ? 'text-emerald-400' : 'text-zinc-500')} />
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-950 flex items-center justify-center border border-slate-200 dark:border-zinc-850 shadow-sm">
+                      <Cpu className={cn("w-5 h-5", isOnline ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400 dark:text-zinc-500')} />
                     </div>
                     <div>
-                      <CardTitle className="text-sm font-bold text-white">{dev.name}</CardTitle>
-                      <CardDescription className="text-[10px] font-mono text-zinc-500">
+                      <CardTitle className="text-sm font-bold text-slate-800 dark:text-white">{dev.name}</CardTitle>
+                      <CardDescription className="text-[10px] font-mono text-slate-450 dark:text-zinc-500">
                         IP: {dev.ip} | 授权码: {dev.licenseBound}
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
 
-                <CardContent className="py-4 border-y border-zinc-800/40 bg-zinc-950/20 text-xs space-y-4">
+                <CardContent className="py-4 border-y border-slate-100 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/20 text-xs space-y-4">
                   
                   {/* 硬件运行状态指标 */}
                   <div className="grid grid-cols-3 gap-2 text-center select-none">
-                    <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-900/60">
+                    <div className="bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-900/60">
                       <Thermometer className="w-3.5 h-3.5 mx-auto text-amber-500" />
-                      <p className="text-[9px] text-zinc-500 font-extrabold uppercase mt-1">CPU 温度</p>
-                      <p className="text-sm font-black text-white mt-0.5">{isOnline ? `${dev.temperature} °C` : '--'}</p>
+                      <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-extrabold uppercase mt-1">CPU 温度</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{isOnline ? `${dev.temperature} °C` : '--'}</p>
                     </div>
-                    <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-900/60">
+                    <div className="bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-900/60">
                       <Activity className={cn("w-3.5 h-3.5 mx-auto text-sky-500", isOnline && "animate-pulse")} />
-                      <p className="text-[9px] text-zinc-500 font-extrabold uppercase mt-1">CPU 负载</p>
-                      <p className="text-sm font-black text-white mt-0.5">{isOnline ? `${dev.cpuLoad} %` : '--'}</p>
+                      <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-extrabold uppercase mt-1">CPU 负载</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{isOnline ? `${dev.cpuLoad} %` : '--'}</p>
                     </div>
-                    <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-900/60">
+                    <div className="bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-900/60">
                       <Heart className="w-3.5 h-3.5 mx-auto text-pink-500" />
-                      <p className="text-[9px] text-zinc-500 font-extrabold uppercase mt-1">物理心跳数</p>
-                      <p className="text-sm font-black text-white mt-0.5">{isOnline ? dev.heartbeatsCount : '--'}</p>
+                      <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-extrabold uppercase mt-1">物理心跳数</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{isOnline ? dev.heartbeatsCount : '--'}</p>
                     </div>
                   </div>
 
                   {/* 额外连接指标 (RTT/通信) */}
-                  <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 px-1 uppercase tracking-wide">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-1 uppercase tracking-wide">
                     <span className="flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                       安全校验链路: {isOnline ? '极强' : '未连接'}
                     </span>
                     <span>
-                      延迟 (RTT): <span className="font-mono text-white text-xs">{isOnline ? `${dev.rtt} ms` : '--'}</span>
+                      延迟 (RTT): <span className="font-mono text-slate-800 dark:text-white text-xs">{isOnline ? `${dev.rtt} ms` : '--'}</span>
                     </span>
                   </div>
                 </CardContent>
 
-                <CardFooter className="pt-3 pb-3 bg-zinc-950/40 flex justify-end">
+                <CardFooter className="pt-3 pb-3 bg-slate-50/50 dark:bg-zinc-950/40 flex justify-end border-t border-slate-100/50 dark:border-zinc-850/20">
                   <Button
                     onClick={() => handlePing(dev.id, dev.name)}
                     disabled={isPinging || !isOnline}
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-bold h-8 px-4 rounded-xl border border-zinc-700/30 flex items-center gap-1.5 transition-all active:scale-97"
+                    className="bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-750 text-slate-700 dark:text-white text-[10px] font-bold h-8 px-4 rounded-xl border border-slate-200 dark:border-zinc-700 flex items-center gap-1.5 transition-all active:scale-97 cursor-pointer"
                   >
                     {isPinging ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                        <RefreshCw className="w-3 h-3 animate-spin text-emerald-500 dark:text-emerald-400" />
                         探测连接中...
                       </>
                     ) : (
                       <>
-                        <Power className="w-3 h-3 text-emerald-400" />
+                        <Power className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
                         心跳探测
                       </>
                     )}

@@ -46,7 +46,12 @@ function UserLoginForm() {
       // 实际生产环境下发送至 NestJS 后端验证注册码并直接获取 user_access_token Cookie
       const response: any = await api.post('/auth/user/license-login', values);
       
-      setAuth(response.user, response.permissions || []);
+      setAuth(
+        response.user,
+        response.permissions || [],
+        response.accessToken,
+        response.refreshToken
+      );
       toast.success('激活登录成功！');
       
       const redirectUrl = searchParams.get('redirect') || '/user/log';
@@ -71,7 +76,7 @@ function UserLoginForm() {
           <div className="w-11 h-11 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <Sparkles className="w-5 h-5 text-zinc-950 shrink-0" />
           </div>
-          <h1 className="text-xl font-black tracking-widest text-white">XBNETS PORTAL</h1>
+          <h1 className="text-xl font-black tracking-widest text-white">小宝修仙</h1>
           <p className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-wide">面向用户端设备与日志控制面板</p>
         </div>
 
