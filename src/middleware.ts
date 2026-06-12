@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// 1. 管理员后台受保护路由 (校验 access_token)
-const adminProtectedPaths = [
-  '/admin',
-];
 
 // 2. 对外用户端受保护路由 (校验 user_access_token)
 const userProtectedPaths = [
@@ -26,7 +22,10 @@ export function middleware(request: NextRequest) {
   // -------------------------------------------------------------
   // 一、拦截管理员后台受保护路由 (排除登录页面本身)
   // -------------------------------------------------------------
-  const isAdminProtected = (pathname === '/admin' || pathname.startsWith('/admin/')) && pathname !== '/admin/login';
+  const isAdminProtected =
+    (pathname === '/admin' || pathname.startsWith('/admin/')) &&
+    pathname !== '/admin/login' &&
+    pathname !== '/admin/forgot-password';
 
   if (isAdminProtected) {
     if (!adminAccessToken && !adminRefreshToken) {

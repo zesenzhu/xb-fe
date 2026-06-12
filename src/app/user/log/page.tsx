@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 import {
   Terminal,
@@ -16,97 +16,99 @@ import {
   Wifi,
   ChevronUp,
   ChevronDown,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useUserStore } from '@/store/useUserStore';
-import { api } from '@/lib/axios';
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { useUserStore } from '@/store/useUserStore'
+import { api } from '@/lib/axios'
 
 interface LogLine {
-  id: string;
-  time: string;
-  level: 'INFO' | 'WARN' | 'ERROR';
-  module: string;
-  content: string;
+  id: string
+  time: string
+  level: 'INFO' | 'WARN' | 'ERROR'
+  module: string
+  content: string
 }
 
 export default function UserLogPage() {
-  const { user } = useUserStore();
-  const code = user?.username; // 注册激活码文本
+  const { user } = useUserStore()
+  const code = user?.username // 注册激活码文本
 
   interface DeviceItem {
-    id: string;
-    name: string;
-    ip: string;
-    status: 'online' | 'offline';
+    id: string
+    name: string
+    ip: string
+    status: 'online' | 'offline'
   }
 
-  const [activeDeviceId, setActiveDeviceId] = useState<string>('');
-  const [devicesList, setDevicesList] = useState<DeviceItem[]>([]);
-  const [logs, setLogs] = useState<LogLine[]>([]);
-  const [isLive, setIsLive] = useState(true); // 是否实时接收日志流
-  const [searchQuery, setSearchQuery] = useState('');
-  const [levelFilter, setLevelFilter] = useState<'ALL' | 'INFO' | 'WARN' | 'ERROR'>('ALL');
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [activeDeviceId, setActiveDeviceId] = useState<string>('')
+  const [devicesList, setDevicesList] = useState<DeviceItem[]>([])
+  const [logs, setLogs] = useState<LogLine[]>([])
+  const [isLive, setIsLive] = useState(true) // 是否实时接收日志流
+  const [searchQuery, setSearchQuery] = useState('')
+  const [levelFilter, setLevelFilter] = useState<
+    'ALL' | 'INFO' | 'WARN' | 'ERROR'
+  >('ALL')
+  const [autoScroll, setAutoScroll] = useState(true)
+  const [controlsCollapsed, setControlsCollapsed] = useState(false)
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [listHeight, setListHeight] = useState(480);
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [listHeight, setListHeight] = useState(480)
 
   // 1. 动态监听容器大小，保证高度在移动端与折叠状态下自适应
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth < 640;
+      const isMobile = window.innerWidth < 640
       if (controlsCollapsed) {
         // 折叠控制栏后，大幅拉升日志视窗高度
-        setListHeight(isMobile ? 540 : 640);
+        setListHeight(isMobile ? 540 : 640)
       } else {
-        setListHeight(isMobile ? 380 : 480);
+        setListHeight(isMobile ? 380 : 480)
       }
-    };
+    }
 
-    handleResize(); // 挂载时立即调用一次
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [controlsCollapsed]);
+    handleResize() // 挂载时立即调用一次
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [controlsCollapsed])
 
   // 1.5 定期拉取授权码绑定的物理设备列表
   useEffect(() => {
-    if (!code) return;
+    if (!code) return
 
     const fetchDevices = async () => {
       try {
         const response: any = await api.get('/register-codes/my-devices', {
           params: { code },
-        });
-        const list = response || [];
-        setDevicesList(list);
+        })
+        const list = response || []
+        setDevicesList(list)
 
         // 自动选择默认设备 ID
         setActiveDeviceId((current) => {
           if (list.length > 0) {
-            const exists = list.some((d: any) => d.id === current);
+            const exists = list.some((d: any) => d.id === current)
             // 如果当前选择的不在物理列表内，或者当前的只是默认的浏览器大屏设备，则自动切为第一个物理设备
             if (!exists || current === user?.deviceId) {
-              return list[0].id;
+              return list[0].id
             }
-            return current;
+            return current
           }
-          return current || user?.deviceId || '';
-        });
+          return current || user?.deviceId || ''
+        })
       } catch (err) {
-        console.error('[Logs] 获取绑定的设备列表失败:', err);
+        console.error('[Logs] 获取绑定的设备列表失败:', err)
       }
-    };
+    }
 
-    fetchDevices();
-    const interval = setInterval(fetchDevices, 8000); // 每 8 秒轮询一次
-    return () => clearInterval(interval);
-  }, [code, user?.deviceId]);
+    fetchDevices()
+    const interval = setInterval(fetchDevices, 8000) // 每 8 秒轮询一次
+    return () => clearInterval(interval)
+  }, [code, user?.deviceId])
 
   // 2. 真实接入后端历史日志接口
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!activeDeviceId) return;
+      if (!activeDeviceId) return
       try {
         const response: any = await api.get('/logs/history', {
           params: {
@@ -115,107 +117,110 @@ export default function UserLogPage() {
             page: 1,
             limit: 100, // 默认拉取最新的 100 条历史日志
           },
-        });
+        })
         if (response && response.list) {
           // 后端返回是时间倒序的（最新在最前），展示时我们需要将其反转为正序（最老在最前，最新在尾部）
-          const sortedHistory = [...response.list].reverse();
-          setLogs(sortedHistory);
+          const sortedHistory = [...response.list].reverse()
+          setLogs(sortedHistory)
         }
       } catch (err: any) {
-        console.error('[Logs] 无法拉取历史归档日志:', err);
+        console.error('[Logs] 无法拉取历史归档日志:', err)
       }
-    };
+    }
 
-    fetchHistory();
-  }, [activeDeviceId, levelFilter]);
+    fetchHistory()
+  }, [activeDeviceId, levelFilter])
 
   // 3. 真实接入 SSE (Server-Sent Events) 推送接口
   useEffect(() => {
-    if (!isLive || !activeDeviceId) return;
+    if (!isLive || !activeDeviceId) return
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
-    const sseUrl = `${apiUrl}/logs/stream?deviceId=${activeDeviceId}&code=${code || ''}`;
-    
-    console.log('[SSE] 正在建立实时日志流连接:', sseUrl);
-    const eventSource = new EventSource(sseUrl, { withCredentials: true });
+    const apiUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api'
+    const sseUrl = `${apiUrl}/logs/stream?deviceId=${activeDeviceId}&code=${code || ''}`
+
+    console.log('[SSE] 正在建立实时日志流连接:', sseUrl)
+    const eventSource = new EventSource(sseUrl, { withCredentials: true })
 
     eventSource.onmessage = (event) => {
       try {
-        const logData = JSON.parse(event.data);
+        const logData = JSON.parse(event.data)
         const freshLog: LogLine = {
           id: logData.id || Math.random().toString(),
           time: logData.time || new Date().toTimeString().split(' ')[0],
           level: logData.level || 'INFO',
           module: logData.module || 'CLIENT',
           content: logData.content || logData.message || '',
-        };
+        }
 
         setLogs((prev) => {
           // 为防行数溢出撑爆内存，强制限制内存最大缓存 3000 行
-          const next = [...prev, freshLog];
+          const next = [...prev, freshLog]
           if (next.length > 3000) {
-            return next.slice(-3000);
+            return next.slice(-3000)
           }
-          return next;
-        });
+          return next
+        })
       } catch (e) {
-        console.error('[SSE] 解析日志载荷包失败:', e);
+        console.error('[SSE] 解析日志载荷包失败:', e)
       }
-    };
+    }
 
     eventSource.onerror = (err) => {
-      console.warn('[SSE] 日志推送流连接发生断开或重连波动:', err);
-    };
+      console.warn('[SSE] 日志推送流连接发生断开或重连波动:', err)
+    }
 
     return () => {
-      console.log('[SSE] 关闭实时日志流连接');
-      eventSource.close();
-    };
-  }, [isLive, activeDeviceId, code]);
+      console.log('[SSE] 关闭实时日志流连接')
+      eventSource.close()
+    }
+  }, [isLive, activeDeviceId, code])
 
   // 4. 关键字联合过滤 (配合级联级别的过滤)
   const filteredLogs = logs.filter((log) => {
-    const matchesLevel = levelFilter === 'ALL' || log.level === levelFilter;
+    const matchesLevel = levelFilter === 'ALL' || log.level === levelFilter
     const matchesSearch =
       searchQuery === '' ||
       log.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.module.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesLevel && matchesSearch;
-  });
+      log.module.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesLevel && matchesSearch
+  })
 
   // 5. 自动滚动锁定
   useEffect(() => {
     if (autoScroll && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight
     }
-  }, [logs, autoScroll, filteredLogs.length]);
+  }, [logs, autoScroll, filteredLogs.length])
 
   // 6. 导出本地日志文件下载
   const handleExport = () => {
     if (logs.length === 0) {
-      toast.error('当前无终端日志可导出');
-      return;
+      toast.error('当前无终端日志可导出')
+      return
     }
 
     const logText = logs
-      .map((log) => `[${log.time}] [${log.level}] [${log.module}]: ${log.content}`)
-      .join('\n');
+      .map(
+        (log) => `[${log.time}] [${log.level}] [${log.module}]: ${log.content}`,
+      )
+      .join('\n')
 
-    const blob = new Blob([logText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `xbnets_terminal_${activeDeviceId || 'device'}_${new Date().toISOString().slice(0, 10)}.log`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success('本地运行日志已成功导出');
-  };
+    const blob = new Blob([logText], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `xbnets_terminal_${activeDeviceId || 'device'}_${new Date().toISOString().slice(0, 10)}.log`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success('本地运行日志已成功导出')
+  }
 
   return (
     <div className="space-y-4 select-none">
-      
       {/* 1. 面板标题头与折叠控制开关 */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-zinc-800/40 pb-2.5">
         <div className="flex items-center gap-2">
@@ -229,7 +234,7 @@ export default function UserLogPage() {
             </span>
           )}
         </div>
-        
+
         {/* 折叠切换按钮 */}
         <Button
           variant="ghost"
@@ -257,16 +262,16 @@ export default function UserLogPage() {
           {/* 数据导出与暂停按钮 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div />
-            
+
             <div className="flex items-center gap-2 ml-auto sm:ml-0">
               <Button
-                variant={isLive ? "default" : "outline"}
+                variant={isLive ? 'default' : 'outline'}
                 onClick={() => setIsLive(!isLive)}
                 className={cn(
-                  "text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl transition-all active:scale-97 border",
-                  isLive 
-                    ? "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:text-zinc-950 shadow-lg shadow-emerald-500/10 border-transparent" 
-                    : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800/80"
+                  'text-[11px] font-bold gap-1.5 h-8.5 px-3 rounded-xl transition-all active:scale-97 border',
+                  isLive
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:text-zinc-950 shadow-lg shadow-emerald-500/10 border-transparent'
+                    : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800/80',
                 )}
               >
                 {isLive ? (
@@ -302,12 +307,32 @@ export default function UserLogPage() {
                 onChange={(e: any) => setLevelFilter(e.target.value)}
                 className="h-9 px-2 w-1/2 sm:w-36 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 text-xs rounded-xl focus:outline-none focus:border-slate-400 dark:focus:border-zinc-700 font-bold"
               >
-                <option value="ALL" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">全部告警等级</option>
-                <option value="INFO" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">INFO (正常自检)</option>
-                <option value="WARN" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">WARN (异常波动)</option>
-                <option value="ERROR" className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300">ERROR (致命故障)</option>
+                <option
+                  value="ALL"
+                  className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300"
+                >
+                  全部告警等级
+                </option>
+                <option
+                  value="INFO"
+                  className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300"
+                >
+                  INFO (正常自检)
+                </option>
+                <option
+                  value="WARN"
+                  className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300"
+                >
+                  WARN (异常波动)
+                </option>
+                <option
+                  value="ERROR"
+                  className="bg-white dark:bg-zinc-950 text-slate-800 dark:text-zinc-300"
+                >
+                  ERROR (致命故障)
+                </option>
               </select>
-              
+
               <div className="relative w-1/2 sm:w-56">
                 <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 dark:text-zinc-650" />
                 <Input
@@ -325,13 +350,15 @@ export default function UserLogPage() {
                 variant="ghost"
                 onClick={() => setAutoScroll(!autoScroll)}
                 className={cn(
-                  "text-[10px] h-7 font-bold border rounded-xl px-2.5 transition-colors",
+                  'text-[10px] h-7 font-bold border rounded-xl px-2.5 transition-colors',
                   autoScroll
-                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                    : "bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500"
+                    ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500',
                 )}
               >
-                <ArrowDown className={cn("w-3 h-3 mr-1", autoScroll && 'animate-bounce')} />
+                <ArrowDown
+                  className={cn('w-3 h-3 mr-1', autoScroll && 'animate-bounce')}
+                />
                 {autoScroll ? '锁定尾部' : '开启滚屏'}
               </Button>
               <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
@@ -355,38 +382,58 @@ export default function UserLogPage() {
             <span className="w-2 h-2 rounded-full bg-amber-500/80" />
             <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
             <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 font-extrabold ml-1.5 whitespace-nowrap">
-              xbnets-vlogs-console
+              xbxx-vlogs-console
             </span>
           </div>
 
           {/* 右侧设备通道切换器 */}
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto border-t border-slate-200 dark:border-zinc-800/40 pt-2 sm:pt-0 sm:border-t-0">
             <div className="flex items-center gap-1.5">
-              <Wifi className={cn("w-3.5 h-3.5 shrink-0", activeDeviceId ? "text-emerald-500 dark:text-emerald-400" : "text-slate-400 dark:text-zinc-500")} />
-              <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-500 shrink-0">设备通道:</span>
+              <Wifi
+                className={cn(
+                  'w-3.5 h-3.5 shrink-0',
+                  activeDeviceId
+                    ? 'text-emerald-500 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-zinc-500',
+                )}
+              />
+              <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-500 shrink-0">
+                设备通道:
+              </span>
             </div>
-            
+
             <select
               value={activeDeviceId}
               onChange={(e) => {
-                const newId = e.target.value;
-                setActiveDeviceId(newId);
-                setLogs([]); // 切换设备时清空历史日志缓存，防止混淆
+                const newId = e.target.value
+                setActiveDeviceId(newId)
+                setLogs([]) // 切换设备时清空历史日志缓存，防止混淆
               }}
               className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] h-6 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 max-w-[190px] sm:max-w-xs truncate"
             >
               {devicesList.map((dev) => (
-                <option key={dev.id} value={dev.id} className="bg-white dark:bg-zinc-950 text-slate-700 dark:text-zinc-300">
+                <option
+                  key={dev.id}
+                  value={dev.id}
+                  className="bg-white dark:bg-zinc-950 text-slate-700 dark:text-zinc-300"
+                >
                   {dev.id} ({dev.status === 'online' ? '在线' : '离线'})
                 </option>
               ))}
-              {user?.deviceId && !devicesList.some((d) => d.id === user.deviceId) && (
-                <option value={user.deviceId} className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500">
-                  {user.deviceId} (浏览器大屏-无日志)
-                </option>
-              )}
+              {user?.deviceId &&
+                !devicesList.some((d) => d.id === user.deviceId) && (
+                  <option
+                    value={user.deviceId}
+                    className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"
+                  >
+                    {user.deviceId} (浏览器大屏-无日志)
+                  </option>
+                )}
               {devicesList.length === 0 && !user?.deviceId && (
-                <option value="" className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500">
+                <option
+                  value=""
+                  className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"
+                >
                   暂无绑定物理设备
                 </option>
               )}
@@ -408,15 +455,16 @@ export default function UserLogPage() {
           ) : (
             <div className="py-2 divide-y divide-zinc-900/10">
               {filteredLogs.map((log, index) => {
-                let levelClass = 'text-sky-400';
-                let contentClass = 'text-zinc-300';
-                
+                let levelClass = 'text-sky-400'
+                let contentClass = 'text-zinc-300'
+
                 if (log.level === 'ERROR') {
-                  levelClass = 'text-red-500 bg-red-950/40 border border-red-900/30 px-1 rounded font-black';
-                  contentClass = 'text-red-400 bg-red-950/10 font-bold';
+                  levelClass =
+                    'text-red-500 bg-red-950/40 border border-red-900/30 px-1 rounded font-black'
+                  contentClass = 'text-red-400 bg-red-950/10 font-bold'
                 } else if (log.level === 'WARN') {
-                  levelClass = 'text-amber-500 font-bold';
-                  contentClass = 'text-amber-300';
+                  levelClass = 'text-amber-500 font-bold'
+                  contentClass = 'text-amber-300'
                 }
 
                 return (
@@ -426,24 +474,38 @@ export default function UserLogPage() {
                   >
                     {/* 第一行：序号、时间、级别、模块 */}
                     <div className="flex items-center gap-2 select-none">
-                      <span className="text-zinc-700 w-8 text-right font-bold">#{String(index + 1).padStart(3, '0')}</span>
+                      <span className="text-zinc-700 w-8 text-right font-bold">
+                        #{String(index + 1).padStart(3, '0')}
+                      </span>
                       <span className="text-zinc-500">[{log.time}]</span>
-                      <span className={cn("px-1.5 py-0.5 rounded text-[10px] shrink-0 font-bold tracking-wider", levelClass)}>
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded text-[10px] shrink-0 font-bold tracking-wider',
+                          levelClass,
+                        )}
+                      >
                         {log.level}
                       </span>
-                      <span className="text-emerald-500 font-bold">[{log.module}]</span>
+                      <span className="text-emerald-500 font-bold">
+                        [{log.module}]
+                      </span>
                     </div>
                     {/* 第二行：具体日志正文（换行显示，不直接接在info后面，不缩略） */}
-                    <div className={cn("pl-10 mt-1 select-all break-all whitespace-pre-wrap", contentClass)}>
+                    <div
+                      className={cn(
+                        'pl-10 mt-1 select-all break-all whitespace-pre-wrap',
+                        contentClass,
+                      )}
+                    >
                       {log.content}
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
           )}
         </div>
       </div>
     </div>
-  );
+  )
 }
