@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button, Modal, Form, Select, Input, Tag, Space, message } from 'antd';
-import { Cpu, Power, Play, RotateCcw, AlertTriangle, ArrowDownCircle, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Cpu, Power, Play, RotateCcw, AlertTriangle, ArrowDownCircle, CheckCircle, ShieldAlert, HardDrive } from 'lucide-react';
 import { api } from '@/lib/axios';
 
 interface DeviceItem {
@@ -19,6 +19,7 @@ interface DeviceItem {
   heartbeatsCount: number;
   activatedAt: string | null;
   lastActiveAt: string | null;
+  diskSpace?: string;
 }
 
 export default function DevicePage() {
@@ -250,6 +251,14 @@ export default function DevicePage() {
                     <span className="text-slate-400 dark:text-zinc-500 font-semibold">网络延迟 (RTT):</span>
                     <span className={`font-mono font-bold ${isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
                       {isOnline ? `${dev.rtt} ms` : '--'}
+                    </span>
+                  </div>
+
+                  {/* 存储空间 */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400 dark:text-zinc-500 font-semibold">存储空间:</span>
+                    <span className="font-mono text-slate-700 dark:text-zinc-200 font-bold">
+                      {dev.diskSpace || '未授权'}
                     </span>
                   </div>
 

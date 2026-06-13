@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Cpu, Power, Activity, Thermometer, ShieldCheck, Heart, RefreshCw } from 'lucide-react';
+import { Cpu, Power, Activity, Thermometer, ShieldCheck, Heart, RefreshCw, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -19,6 +19,7 @@ interface ClientDevice {
   rtt: number; // 往返延迟 (ms)
   licenseBound: string;
   heartbeatsCount: number;
+  diskSpace?: string;
 }
 
 export default function UserDevicePage() {
@@ -190,6 +191,14 @@ export default function UserDevicePage() {
                     </span>
                     <span>
                       延迟 (RTT): <span className="font-mono text-slate-800 dark:text-white text-xs">{isOnline ? `${dev.rtt} ms` : '--'}</span>
+                    </span>
+                  </div>
+
+                  {/* 存储空间指标 */}
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-1 uppercase tracking-wide pt-2 border-t border-slate-100/40 dark:border-zinc-800/20">
+                    <span className="flex items-center gap-1">
+                      <HardDrive className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                      存储空间: <span className="font-mono text-slate-800 dark:text-white text-xs">{dev.diskSpace || '未授权'}</span>
                     </span>
                   </div>
                 </CardContent>
