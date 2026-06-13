@@ -1,3 +1,17 @@
+/**
+ * @file page.tsx
+ * @description 小宝修仙管理端安全登录入口页面（服务端路由组件）。负责渲染客户端登录表单并包装在 React.Suspense 容器内。
+ * @author AI Assistant
+ * @date 2026-06-13
+ *
+ * [核心职责]
+ * 1. 动态路由强制：使用 `force-dynamic` 避开静态编译，保证每次前端部署升级后，旧 HTML 强缓存不会引用到被删除的旧 JS Chunk；
+ * 2. 路由隔离：利用 `<React.Suspense>` 将使用 `useSearchParams()` 的 `LoginForm` 包装隔离，防止 Next.js 在 build 阶段报错挂起。
+ *
+ * [使用场景]
+ * - 后台管理登录根页面 `/admin/login`。
+ */
+
 import React from 'react';
 import { LoginForm } from './LoginForm';
 

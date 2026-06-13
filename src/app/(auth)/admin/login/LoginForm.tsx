@@ -1,3 +1,18 @@
+/**
+ * @file LoginForm.tsx
+ * @description 小宝修仙管理端安全登录表单组件。负责收集管理员凭证、执行表单验证、与 NestJS 后端网关通信并保存全局状态。
+ * @author AI Assistant
+ * @date 2026-06-13
+ *
+ * [核心职责]
+ * 1. 表单校验：利用 react-hook-form 配合 Zod 校验 Schema 实现前端密码强度及用户名长度拦截；
+ * 2. 状态存储：登录成功后，将后端颁发的双 Token 及用户基础 Profile 状态写入 Zustand 状态库中（user-storage）；
+ * 3. 动态配置感知：在挂载阶段异步获取公共配置状态，用于动态展现或隐藏“忘记密码”重置入口。
+ *
+ * [使用场景]
+ * - 管理员登录入口路由页面 `/admin/login`。
+ */
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -23,6 +38,25 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+/**
+ * 后端系统公开设置接口响应契约
+ */
+interface PublicSettingsResponse {
+  emailEnabled?: boolean;
+}
+
+/**
+ * 后端管理登录接口响应契约
+ */
+interface AdminLoginResponse {
+  success: boolean;
+  message: string;
+  accessToken: string;
+  refreshToken: string;
+  user: UserProfile;
+  permissions: string[];
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,8 +68,10 @@ export function LoginForm() {
   useEffect(() => {
     const checkMailStatus = async () => {
       try {
-        const response: any = await api.get('/system/settings/public');
-        setEmailEnabled(!!response.emailEnabled);
+        const response = await api.get<PublicSettingsResponse>('/system/settings/public');
+        // response.data 由 Axios 响应拦截器统一返回，由于类型已声明，此处安全读取
+        const data = response as unknown as PublicSettingsResponse;
+        setEmailEnabled(!!data.emailEnabled);
       } catch (err) {
         console.warn('获取系统邮件功能开启状态失败', err);
         setEmailEnabled(false);
@@ -61,12 +97,14 @@ export function LoginForm() {
   const onSubmit = async (values: LoginFormValues) => {
     setLoading(true);
     try {
-      const response: any = await api.post('/auth/admin/login', values);
+      const response = await api.post<AdminLoginResponse>('/auth/admin/login', values);
       
-      const userProfile: UserProfile = response.user;
-      const permissions: string[] = response.permissions || [];
-      const accessToken: string = response.accessToken;
-      const refreshToken: string = response.refreshToken;
+      // 强制转型为明确的 AdminLoginResponse 契约结构
+      const res = response as unknown as AdminLoginResponse;
+      const userProfile: UserProfile = res.user;
+      const permissions: string[] = res.permissions || [];
+      const accessToken: string = res.accessToken;
+      const refreshToken: string = res.refreshToken;
       
       setAuth(userProfile, permissions, accessToken, refreshToken);
       toast.success('登录成功，欢迎回来！');
@@ -74,9 +112,13 @@ export function LoginForm() {
       // 成功后重定向
       const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
       router.push(redirectUrl);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn('登录接口发生异常', error);
-      toast.error(error.message || '登录请求失败，请检查您的用户名或密码！');
+      // 安全的类型收窄，防止 direct any 属性访问崩溃
+      const errMsg = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '登录请求失败，请检查您的用户名或密码！';
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
