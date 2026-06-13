@@ -48,10 +48,35 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
     handleDeviceEvent,
     emitLog,
     setDevicesList,
+    updateUser,
   } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [timeStr, setTimeStr] = useState('');
+
+  // 格式化渲染剩余时间
+  const renderRemainingTime = (expireTime?: string) => {
+    if (!expireTime) return '计算中...';
+    const expire = new Date(expireTime);
+    const now = new Date();
+    const diffMs = expire.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      return '已到期';
+    }
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays}天${diffHours}小时`;
+    }
+    if (diffHours > 0) {
+      return `${diffHours}小时${diffMinutes}分钟`;
+    }
+    return `${diffMinutes}分钟`;
+  };
 
   // 增加实时时钟逻辑
   useEffect(() => {
@@ -82,6 +107,7 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
     }
 
     let eventSource: EventSource | null = null;
+    let statusInterval: any = null;
 
     const initConnection = async () => {
       // A. 先拉取一次初始物理设备列表基线，灌入 Zustand
@@ -132,7 +158,22 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
       };
     };
 
+    const fetchStatus = async () => {
+      try {
+        const response: any = await api.get('/register-codes/my-status', {
+          params: { code: user.username },
+        });
+        if (response && response.expireTime) {
+          updateUser({ expireTime: response.expireTime });
+        }
+      } catch (err) {
+        console.error('[Status Poll] 轮询激活码状态失败:', err);
+      }
+    };
+
     initConnection();
+    fetchStatus();
+    statusInterval = setInterval(fetchStatus, 15000);
 
     return () => {
       if (eventSource) {
@@ -140,6 +181,9 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
         eventSource.close();
       }
       setSseConnected(false);
+      if (statusInterval) {
+        clearInterval(statusInterval);
+      }
     };
   }, [
     isAuthenticated,
@@ -149,6 +193,7 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
     handleDeviceEvent,
     emitLog,
     setDevicesList,
+    updateUser,
   ]);
 
   if (!mounted) {
@@ -275,7 +320,7 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
             <div className="flex flex-col text-left shrink-0">
               <span className="text-xs font-extrabold leading-none text-slate-900 dark:text-white">{user?.nickname || user?.username || '终端用户'}</span>
               <span className="text-[9px] text-slate-400 dark:text-zinc-500 mt-1 font-mono tracking-wider">
-                ID: {user?.id?.slice(0, 8)}
+                剩余时长: {renderRemainingTime(user?.expireTime)} \| ID: {user?.id?.slice(0, 8)}
               </span>
             </div>
           </div>

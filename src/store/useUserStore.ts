@@ -15,6 +15,7 @@ export interface UserProfile {
     code: string;
   };
   deviceId?: string;
+  expireTime?: string;
 }
 
 // 物理设备状态定义
