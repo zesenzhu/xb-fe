@@ -297,6 +297,12 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
             <span>{timeStr || '载入中...'}</span>
           </div>
 
+          {/* 移动端极简剩余时间展示 */}
+          <div className="flex sm:hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 select-none shrink-0">
+            <Clock className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+            <span>余:{renderRemainingTime(user?.expireTime)}</span>
+          </div>
+
           <Button
             variant="ghost"
             size="icon"
