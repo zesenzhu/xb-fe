@@ -30,18 +30,9 @@ interface LogLine {
 }
 
 export default function UserLogPage() {
-  const { user } = useUserStore()
-  const code = user?.username // 注册激活码文本
-
-  interface DeviceItem {
-    id: string
-    name: string
-    ip: string
-    status: 'online' | 'offline'
-  }
+  const { user, activeDevices, subscribeLogs } = useUserStore()
 
   const [activeDeviceId, setActiveDeviceId] = useState<string>('')
-  const [devicesList, setDevicesList] = useState<DeviceItem[]>([])
   const [logs, setLogs] = useState<LogLine[]>([])
   const [isLive, setIsLive] = useState(true) // 是否实时接收日志流
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,39 +62,21 @@ export default function UserLogPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [controlsCollapsed])
 
-  // 1.5 定期拉取授权码绑定的物理设备列表
+  // 1.5 当全局物理设备列表更新时，自动选择默认设备 ID
   useEffect(() => {
-    if (!code) return
-
-    const fetchDevices = async () => {
-      try {
-        const response: any = await api.get('/register-codes/my-devices', {
-          params: { code },
-        })
-        const list = response || []
-        setDevicesList(list)
-
-        // 自动选择默认设备 ID
-        setActiveDeviceId((current) => {
-          if (list.length > 0) {
-            const exists = list.some((d: any) => d.id === current)
-            // 如果当前选择的不在物理列表内，或者当前的只是默认的浏览器大屏设备，则自动切为第一个物理设备
-            if (!exists || current === user?.deviceId) {
-              return list[0].id
-            }
-            return current
-          }
-          return current || user?.deviceId || ''
-        })
-      } catch (err) {
-        console.error('[Logs] 获取绑定的设备列表失败:', err)
-      }
+    if (activeDevices.length > 0) {
+      setActiveDeviceId((current) => {
+        const exists = activeDevices.some((d) => d.id === current);
+        // 如果当前选中设备不存在或还是默认的浏览器设备，则选择第一个物理设备
+        if (!exists || current === user?.deviceId) {
+          return activeDevices[0].id;
+        }
+        return current;
+      });
+    } else {
+      setActiveDeviceId(user?.deviceId || '');
     }
-
-    fetchDevices()
-    const interval = setInterval(fetchDevices, 8000) // 每 8 秒轮询一次
-    return () => clearInterval(interval)
-  }, [code, user?.deviceId])
+  }, [activeDevices, user?.deviceId]);
 
   // 2. 真实接入后端历史日志接口
   useEffect(() => {
@@ -131,50 +104,35 @@ export default function UserLogPage() {
     fetchHistory()
   }, [activeDeviceId, levelFilter])
 
-  // 3. 真实接入 SSE (Server-Sent Events) 推送接口
+  // 3. 真实接入全局共享 stream 流的日志订阅机制
   useEffect(() => {
-    if (!isLive || !activeDeviceId) return
+    if (!isLive || !activeDeviceId) return;
 
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api'
-    const sseUrl = `${apiUrl}/logs/stream?deviceId=${activeDeviceId}&code=${code || ''}`
-
-    console.log('[SSE] 正在建立实时日志流连接:', sseUrl)
-    const eventSource = new EventSource(sseUrl, { withCredentials: true })
-
-    eventSource.onmessage = (event) => {
-      try {
-        const logData = JSON.parse(event.data)
+    // 订阅全局 layout sse 长连接转发过来的当前设备日志消息
+    const unsubscribe = subscribeLogs((logPayload: any) => {
+      if (logPayload.deviceId === activeDeviceId) {
         const freshLog: LogLine = {
-          id: logData.id || Math.random().toString(),
-          time: logData.time || new Date().toTimeString().split(' ')[0],
-          level: logData.level || 'INFO',
-          module: logData.module || 'CLIENT',
-          content: logData.content || logData.message || '',
-        }
+          id: logPayload.id || Math.random().toString(),
+          time: logPayload.time || new Date().toTimeString().split(' ')[0],
+          level: logPayload.level || 'INFO',
+          module: logPayload.module || 'CLIENT',
+          content: logPayload.content || logPayload.message || '',
+        };
 
         setLogs((prev) => {
-          // 为防行数溢出撑爆内存，强制限制内存最大缓存 3000 行
-          const next = [...prev, freshLog]
+          const next = [...prev, freshLog];
           if (next.length > 3000) {
-            return next.slice(-3000)
+            return next.slice(-3000);
           }
-          return next
-        })
-      } catch (e) {
-        console.error('[SSE] 解析日志载荷包失败:', e)
+          return next;
+        });
       }
-    }
-
-    eventSource.onerror = (err) => {
-      console.warn('[SSE] 日志推送流连接发生断开或重连波动:', err)
-    }
+    });
 
     return () => {
-      console.log('[SSE] 关闭实时日志流连接')
-      eventSource.close()
-    }
-  }, [isLive, activeDeviceId, code])
+      unsubscribe();
+    };
+  }, [isLive, activeDeviceId, subscribeLogs]);
 
   // 4. 关键字联合过滤 (配合级联级别的过滤)
   const filteredLogs = logs.filter((log) => {
@@ -411,7 +369,7 @@ export default function UserLogPage() {
               }}
               className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] h-6 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 max-w-[190px] sm:max-w-xs truncate"
             >
-              {devicesList.map((dev) => (
+              {activeDevices.map((dev) => (
                 <option
                   key={dev.id}
                   value={dev.id}
@@ -421,7 +379,7 @@ export default function UserLogPage() {
                 </option>
               ))}
               {user?.deviceId &&
-                !devicesList.some((d) => d.id === user.deviceId) && (
+                !activeDevices.some((d) => d.id === user.deviceId) && (
                   <option
                     value={user.deviceId}
                     className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"
@@ -429,7 +387,7 @@ export default function UserLogPage() {
                     {user.deviceId} (浏览器大屏-无日志)
                   </option>
                 )}
-              {devicesList.length === 0 && !user?.deviceId && (
+              {activeDevices.length === 0 && !user?.deviceId && (
                 <option
                   value=""
                   className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"

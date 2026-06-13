@@ -17,6 +17,14 @@ export interface UserProfile {
   deviceId?: string;
 }
 
+// 物理设备状态定义
+export interface DeviceItem {
+  id: string;
+  name: string;
+  ip: string;
+  status: 'online' | 'offline';
+  battery?: number;
+}
 
 // UserStore 状态接口定义
 interface UserState {
@@ -32,6 +40,13 @@ interface UserState {
   clientAccessToken: string | null;
   clientRefreshToken: string | null;
 
+  // 运行期 SSE 长连接通信指示状态
+  sseConnected: boolean;
+  // 动态更新的所有在线与历史绑定物理设备列表
+  activeDevices: DeviceItem[];
+  // 网页端高频日志订阅监听回调
+  logListener: ((log: any) => void) | null;
+
   setAuth: (
     user: UserProfile,
     permissions: string[],
@@ -40,6 +55,17 @@ interface UserState {
   ) => void;
   clearAuth: () => void;
   updateUser: (profile: Partial<UserProfile>) => void;
+
+  // 全局 SSE 心跳连通指示
+  setSseConnected: (connected: boolean) => void;
+  // 覆写设备列表
+  setDevicesList: (devices: DeviceItem[]) => void;
+  // 增量/状态更新设备列表
+  handleDeviceEvent: (type: 'device_list' | 'device_status', payload: any) => void;
+  // 日志页面订阅全局日志流的钩子
+  subscribeLogs: (listener: (log: any) => void) => () => void;
+  // 分发广播实时日志
+  emitLog: (log: any) => void;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -80,6 +106,11 @@ export const useUserStore = create<UserState>()(
       adminRefreshToken: null,
       clientAccessToken: null,
       clientRefreshToken: null,
+
+      // 运行期临时状态初始化
+      sseConnected: false,
+      activeDevices: [],
+      logListener: null,
       
       setAuth: (user, permissions, accessToken = null, refreshToken = null) => {
         // 判断当前登录的用户是否是终端授权用户 (client)
@@ -105,16 +136,86 @@ export const useUserStore = create<UserState>()(
           adminRefreshToken: null,
           clientAccessToken: null,
           clientRefreshToken: null,
+          sseConnected: false,
+          activeDevices: [],
+          logListener: null,
         }),
         
       updateUser: (profile) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...profile } : null,
         })),
+
+      setSseConnected: (connected: boolean) => set({ sseConnected: connected }),
+
+      setDevicesList: (devices: DeviceItem[]) => set({ activeDevices: devices }),
+
+      handleDeviceEvent: (type: 'device_list' | 'device_status', payload: any) =>
+        set((state) => {
+          let updated = [...state.activeDevices];
+          if (type === 'device_list') {
+            const { action, deviceId, appName, deviceInfo, ip } = payload;
+            if (action === 'online') {
+              const idx = updated.findIndex((d) => d.id === deviceId);
+              const newItem: DeviceItem = {
+                id: deviceId,
+                name: appName || deviceInfo?.name || '未知设备',
+                ip: ip || '',
+                status: 'online',
+                battery: deviceInfo?.battery || 100,
+              };
+              if (idx > -1) {
+                updated[idx] = { ...updated[idx], ...newItem };
+              } else {
+                updated.push(newItem);
+              }
+            } else if (action === 'offline') {
+              updated = updated.map((d) =>
+                d.id === deviceId ? { ...d, status: 'offline' as const } : d
+              );
+            }
+          } else if (type === 'device_status') {
+            const { battery, status, ip, deviceId } = payload;
+            updated = updated.map((d) =>
+              d.id === deviceId
+                ? {
+                    ...d,
+                    battery: battery !== undefined ? battery : d.battery,
+                    status: status || d.status,
+                    ip: ip || d.ip,
+                  }
+                : d
+            );
+          }
+          return { activeDevices: updated };
+        }),
+
+      subscribeLogs: (listener: (log: any) => void) => {
+        set({ logListener: listener });
+        return () => {
+          set((state) => (state.logListener === listener ? { logListener: null } : {}));
+        };
+      },
+
+      emitLog: (log: any) => {
+        const listener = useUserStore.getState().logListener;
+        if (listener) {
+          listener(log);
+        }
+      },
     }),
     {
       name: 'user-storage', // 存储在 localStorage 中的键名
       storage: createJSONStorage(() => secureStorage), // 使用安全的对称加密引擎
+      partialize: (state) => ({
+        user: state.user,
+        permissions: state.permissions,
+        isAuthenticated: state.isAuthenticated,
+        adminAccessToken: state.adminAccessToken,
+        adminRefreshToken: state.adminRefreshToken,
+        clientAccessToken: state.clientAccessToken,
+        clientRefreshToken: state.clientRefreshToken,
+      }), // 过滤排除运行时临时状态，防止本地持久化加密异常
     }
   )
 );

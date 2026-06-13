@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getSocket, disconnectSocket } from '@/lib/socket';
+import { disconnectSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/axios';
@@ -39,10 +39,18 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useGlobalStore();
-  const { user, clearAuth, isAuthenticated } = useUserStore();
+  const {
+    user,
+    clearAuth,
+    isAuthenticated,
+    sseConnected,
+    setSseConnected,
+    handleDeviceEvent,
+    emitLog,
+    setDevicesList,
+  } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
   const [timeStr, setTimeStr] = useState('');
 
   // 增加实时时钟逻辑
@@ -62,38 +70,86 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
     return () => clearInterval(interval);
   }, []);
 
-  // 1. 双重安全网校验，并初始化 Socket 长连接通信
+  // 1. 挂载时拉取初始基线设备列表，并开启全局多路混合 SSE 长连接
   useEffect(() => {
     setMounted(true);
     
-    // 如果 Zustand 标识未登录，强制退回用户登录端 (Middleware 是第一关，这里是浏览器端第二关)
-    if (!isAuthenticated) {
-      router.push('/user/login');
+    if (!isAuthenticated || !user?.username) {
+      if (isAuthenticated) {
+        router.push('/user/login');
+      }
       return;
     }
 
-    // 初始化全局长链接握手
-    const socket = getSocket();
-    if (socket && typeof socket.connect === 'function') {
-      socket.connect(); // 手动发起 TCP 握手
-      
-      const onConnect = () => setSocketConnected(true);
-      const onDisconnect = () => setSocketConnected(false);
+    let eventSource: EventSource | null = null;
 
-      socket.on('connect', onConnect);
-      socket.on('disconnect', onDisconnect);
-
-      // 如果当前已经是连接状态
-      if (socket.connected) {
-        setSocketConnected(true);
+    const initConnection = async () => {
+      // A. 先拉取一次初始物理设备列表基线，灌入 Zustand
+      try {
+        const response: any = await api.get('/register-codes/my-devices', {
+          params: { code: user.username },
+        });
+        setDevicesList(response || []);
+      } catch (err) {
+        console.error('[SSE Baseline] 获取设备基线列表失败:', err);
       }
 
-      return () => {
-        socket.off('connect', onConnect);
-        socket.off('disconnect', onDisconnect);
+      // B. 建立全局 SSE 通道
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
+      const sseUrl = `${apiUrl}/logs/user-stream?code=${user.username}`;
+      
+      console.log('[SSE] 正在建立全局统一长连接流:', sseUrl);
+      eventSource = new EventSource(sseUrl, { withCredentials: true });
+
+      eventSource.onopen = () => {
+        console.log('[SSE] 🤝 全局物理信道连接成功，通信链路恢复。');
+        setSseConnected(true);
       };
-    }
-  }, [isAuthenticated, router]);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const { type, payload } = data;
+
+          if (type === 'heartbeat') {
+            // 定时保活数据包，亮起绿灯
+            setSseConnected(true);
+          } else if (type === 'device_list' || type === 'device_status') {
+            // 实时增量更新设备列表与电量状态
+            handleDeviceEvent(type, payload);
+          } else if (type === 'log') {
+            // 实时分发广播日志消息
+            emitLog(payload);
+          }
+        } catch (e) {
+          console.error('[SSE] 解析流载荷包失败:', e);
+        }
+      };
+
+      eventSource.onerror = () => {
+        console.warn('[SSE] ⚠️ 全局长连接流断开连接，正在重连...');
+        setSseConnected(false);
+      };
+    };
+
+    initConnection();
+
+    return () => {
+      if (eventSource) {
+        console.log('[SSE] 🔌 主动关闭全局长连接流。');
+        eventSource.close();
+      }
+      setSseConnected(false);
+    };
+  }, [
+    isAuthenticated,
+    user?.username,
+    router,
+    setSseConnected,
+    handleDeviceEvent,
+    emitLog,
+    setDevicesList,
+  ]);
 
   if (!mounted) {
     return <div className="h-screen w-screen bg-slate-950" />;
@@ -142,11 +198,11 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
           {/* WebSocket 长连接物理状态呼吸灯 */}
           <div className={cn(
             "hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold border transition-all duration-300",
-            socketConnected
+            sseConnected
               ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
               : 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 animate-pulse'
           )}>
-            {socketConnected ? (
+            {sseConnected ? (
               <>
                 <Wifi className="w-3.5 h-3.5" />
                 <span className="relative flex h-1.5 w-1.5 shrink-0">
