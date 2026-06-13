@@ -375,7 +375,7 @@ export default function UserLogPage() {
                   value={dev.id}
                   className="bg-white dark:bg-zinc-950 text-slate-700 dark:text-zinc-300"
                 >
-                  {dev.id} ({dev.status === 'online' ? '在线' : '离线'})
+                  {dev.name || dev.id} ({dev.status === 'online' ? '在线' : '离线'})
                 </option>
               ))}
               {user?.deviceId &&
