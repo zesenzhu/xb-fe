@@ -99,13 +99,14 @@ jobs:
             # 物理拉起容器
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
-            # ⚡ 自动同步部署并安全重载 Nginx 配置 (适配宝塔面板环境，支持自适应证书降级)
-            if [ -f "/etc/nginx/certs/${{ secrets.DOMAIN || 'xiaobao.work' }}.pem" ]; then
+            # ⚡ 自动同步部署并安全重载 Nginx 配置 (直接覆盖宝塔对应域名的站点配置文件)
+            DOMAIN_NAME="${{ secrets.DOMAIN || 'xiaobao.work' }}"
+            if [ -f "/etc/nginx/certs/${DOMAIN_NAME}.pem" ]; then
               echo "[Deploy] 🛡️ 检测到 SSL 证书已就绪，正在应用 HTTPS 安全站点配置..."
-              sudo mv out/xiaobao.conf /www/server/panel/vhost/nginx/xiaobao.conf
+              sudo mv out/xiaobao.conf "/www/server/panel/vhost/nginx/${DOMAIN_NAME}.conf"
             else
               echo "[Deploy] ⚠️ 未在宿主机检测到 SSL 证书物理文件，自适应降级部署 [纯 HTTP 站点]..."
-              sudo mv out/xiaobao.http /www/server/panel/vhost/nginx/xiaobao.conf
+              sudo mv out/xiaobao.http "/www/server/panel/vhost/nginx/${DOMAIN_NAME}.conf"
             fi
             
             # ⚡ 自适应探测 Nginx 可执行文件绝对路径
