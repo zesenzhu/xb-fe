@@ -9,7 +9,7 @@ const userProtectedPaths = [
   '/user/ai-record',
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 获取管理员与用户端独立的 Cookie 令牌
@@ -91,4 +91,3 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png|.*\\.svg|.*\\.jpg|.*\\.webp).*)',
   ],
 };
-

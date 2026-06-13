@@ -304,8 +304,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             !showSidebar && "max-w-6xl mx-auto px-6 md:px-8"
           )}>
             <div className="flex items-center gap-4">
-            {/* 移动端菜单激活按钮 */}
-            {showSidebar && (
+              {/* 移动端菜单激活按钮 - 始终保留以允许在任何页面拉出主干菜单 */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -314,10 +313,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <Menu className="w-5 h-5" />
               </Button>
-            )}
 
-            {/* 动态面包屑导航 (隐藏在极小屏幕下) */}
-            <nav className="hidden sm:flex items-center gap-1 text-sm text-slate-500 dark:text-zinc-400">
+              {/* 动态面包屑导航 (隐藏在极小屏幕下) */}
+              <nav className="hidden sm:flex items-center gap-1 text-sm text-slate-500 dark:text-zinc-400">
               {breadcrumbs.map((crumb, idx) => (
                 <div key={`${crumb.path}-${idx}`} className="flex items-center">
                   {idx > 0 && <ChevronRight className="w-3.5 h-3.5 mx-1 text-slate-400" />}

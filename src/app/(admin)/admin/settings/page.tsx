@@ -16,6 +16,7 @@ export default function SettingsPage() {
 
   // 邮件相关表单状态
   const [mailEnabled, setMailEnabled] = useState(false);
+  const [alertMailEnabled, setAlertMailEnabled] = useState(false);
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('465');
   const [smtpUser, setSmtpUser] = useState('');
@@ -28,6 +29,7 @@ export default function SettingsPage() {
     try {
       const data: any = await api.get('/system/settings');
       setMailEnabled(data.mail_enabled === 'true');
+      setAlertMailEnabled(data.alert_mail_enabled === 'true');
       setSmtpHost(data.smtp_host || '');
       setSmtpPort(data.smtp_port || '465');
       setSmtpUser(data.smtp_user || '');
@@ -51,6 +53,7 @@ export default function SettingsPage() {
     try {
       const payload = {
         mail_enabled: mailEnabled ? 'true' : 'false',
+        alert_mail_enabled: alertMailEnabled ? 'true' : 'false',
         smtp_host: smtpHost,
         smtp_port: smtpPort,
         smtp_user: smtpUser,
@@ -202,6 +205,26 @@ export default function SettingsPage() {
                         onChange={(e) => setSmtpFrom(e.target.value)}
                         className="bg-slate-50/50 dark:bg-zinc-950 focus-visible:ring-emerald-500/50 text-xs"
                       />
+                    </div>
+
+                    {/* 全局异常邮件警报总开关 */}
+                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-zinc-800/80 pt-4 mt-2">
+                      <div>
+                        <Label className="text-xs font-bold text-slate-800 dark:text-zinc-200">开启设备异常邮件报警系统</Label>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                          允许特定激活卡密绑定邮箱并向其发送设备离线、锁屏、VPN断开等异常提醒。
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          id="alert-mail-enabled"
+                          checked={alertMailEnabled}
+                          onChange={(e) => setAlertMailEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-6 bg-slate-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-zinc-700 peer-checked:bg-emerald-500 animate-in fade-in"></div>
+                      </label>
                     </div>
                   </div>
                 ) : (

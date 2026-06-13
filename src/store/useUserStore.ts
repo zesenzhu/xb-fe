@@ -71,10 +71,20 @@ interface UserState {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// 动态分区持久化前缀：针对管理员 (/admin) 与卡密普通用户 (/user) 分别读写不同的 LocalStorage 键名
+const getRealName = (name: string): string => {
+  if (typeof window !== 'undefined') {
+    const isUser = window.location.pathname.startsWith('/user');
+    return `${name}_${isUser ? 'client' : 'admin'}`;
+  }
+  return name;
+};
+
 // 自定义安全的加密/解密本地存储驱动引擎 (带篡改强行退登保护)
 const secureStorage: StateStorage = {
   getItem: (name: string): string | null => {
-    const rawValue = localStorage.getItem(name);
+    const realName = getRealName(name);
+    const rawValue = localStorage.getItem(realName);
     if (!rawValue) return null;
     
     try {
@@ -82,18 +92,19 @@ const secureStorage: StateStorage = {
       const decrypted = isProduction ? decryptData(rawValue) : rawValue;
       return decrypted;
     } catch (error) {
-      console.warn(`[Security] 本地持久化缓存 [${name}] 数据异常或被手动修改。为了保障账户安全，已强制清空缓存并下线。`, error);
-      localStorage.removeItem(name);
+      console.warn(`[Security] 本地持久化缓存 [${realName}] 数据异常或被手动修改。为了保障账户安全，已强制清空缓存并下线。`, error);
+      localStorage.removeItem(realName);
       return null;
     }
   },
   setItem: (name: string, value: string): void => {
+    const realName = getRealName(name);
     // 仅在生产环境下进行高强度 AES-256 加密
     const finalValue = isProduction ? encryptData(value) : value;
-    localStorage.setItem(name, finalValue);
+    localStorage.setItem(realName, finalValue);
   },
   removeItem: (name: string): void => {
-    localStorage.removeItem(name);
+    localStorage.removeItem(getRealName(name));
   }
 };
 
