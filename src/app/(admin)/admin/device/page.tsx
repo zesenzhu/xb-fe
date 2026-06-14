@@ -23,6 +23,8 @@ interface DeviceItem {
   battery: number;
   scriptMemory?: number;                 // 脚本当前内存 (KB)
   isSwitchingAccount?: number | boolean; // 换号状态中
+  currentTask?: string;                  // 当前执行任务名称
+  runningTime?: number;                  // 物理脚本已运行时间 (秒)
 }
 
 export default function DevicePage() {
@@ -43,6 +45,14 @@ export default function DevicePage() {
   const [configVpn, setConfigVpn] = useState(true);
   const [configErrorLog, setConfigErrorLog] = useState(true);
   const [configMemoryLimit, setConfigMemoryLimit] = useState(150); // MB 限制
+
+  const formatRunningTime = (secs?: number) => {
+    if (secs === undefined || secs === null || secs <= 0) return null;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const getAppFriendlyName = (pkg: string) => {
     if (!pkg || pkg === 'unknown') return '未知前台';
@@ -496,6 +506,17 @@ export default function DevicePage() {
                         </div>
                       </div>
 
+                      {/* 当前正在跑的任务 */}
+                      {isOnline && dev.currentTask && (
+                        <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-800/40 border border-slate-200/40 dark:border-zinc-800/80 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-300 select-none">
+                          <ListTodo className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                          <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">当前任务:</span>
+                          <span className="truncate flex-1 font-bold text-slate-700 dark:text-zinc-200" title={dev.currentTask}>
+                            {dev.currentTask}
+                          </span>
+                        </div>
+                      )}
+
                       {/* 物理IP */}
                       <div className="flex justify-between items-center text-[11px]">
                         <span className="text-slate-400 dark:text-zinc-500 font-semibold">网络物理 IP:</span>
@@ -552,6 +573,15 @@ export default function DevicePage() {
                           {isOnline ? `${dev.heartbeatsCount} Pings` : '--'}
                         </span>
                       </div>
+
+                      {/* 物理脚本已运行时间 */}
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-400 dark:text-zinc-500 font-semibold">脚本运行时间:</span>
+                        <span className={`font-mono font-bold ${isOnline ? 'text-slate-700 dark:text-zinc-200' : 'text-slate-400'}`}>
+                          {isOnline ? (formatRunningTime(dev.runningTime) || '计算中') : '--'}
+                        </span>
+                      </div>
+
                       
                       {/* 最后活跃 */}
                       <div className="flex justify-between items-center text-[10px] border-t border-slate-100 dark:border-zinc-800/50 pt-2">
