@@ -169,9 +169,12 @@ export const useUserStore = create<UserState>()(
             const { action, deviceId, appName, deviceInfo, ip } = payload;
             if (action === 'online') {
               const idx = updated.findIndex((d) => d.id === deviceId);
+              const resolvedName = (deviceInfo?.name && deviceInfo.name !== 'Unknown Name')
+                ? deviceInfo.name
+                : (appName || '未知设备');
               const newItem: DeviceItem = {
                 id: deviceId,
-                name: appName || deviceInfo?.name || '未知设备',
+                name: resolvedName,
                 ip: ip || '',
                 status: 'online',
                 battery: deviceInfo?.battery || 100,
