@@ -88,7 +88,7 @@ export default function UserDeviceListPage() {
     if (!code) return;
     try {
       const res: any = await api.get('/register-codes/my-devices', {
-        params: { code },
+        params: { code: code.trim().toUpperCase() },
       });
       setDevices(res || []);
     } catch (err: any) {
@@ -103,7 +103,7 @@ export default function UserDeviceListPage() {
     const confirm = window.confirm(`确定要将设备 [ ${deviceName} ] 从该激活码解绑并强制踢线吗？`);
     if (!confirm) return;
     try {
-      await api.patch('/register-codes/my-devices/unbind', { code, deviceId, operator: 'user' });
+      await api.patch('/register-codes/my-devices/unbind', { code: code.trim().toUpperCase(), deviceId, operator: 'user' });
       toast.success(`设备 [ ${deviceName} ] 解绑指令下发成功，已强制踢线下线`);
       fetchDevices();
     } catch (err: any) {
