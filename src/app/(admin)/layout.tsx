@@ -39,6 +39,7 @@ import {
 import { toast } from 'sonner';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/axios';
+import HeaderNotification from './_components/HeaderNotification';
 
 interface MenuItem {
   name: string;
@@ -333,11 +334,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* 右侧系统配置与用户下拉菜单 */}
           <div className="flex items-center gap-3">
-            {/* 消息通知 (仅作高颜值点缀) */}
-            <Button variant="ghost" size="icon" className="relative hover:bg-slate-100 dark:hover:bg-zinc-800">
-              <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
+            {/* 消息通知 (动态业务提醒) */}
+            <HeaderNotification />
 
             {/* 实时时间显示 */}
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800/60 border border-slate-200/60 dark:border-zinc-800 text-xs font-mono font-bold text-slate-600 dark:text-zinc-400 select-none">

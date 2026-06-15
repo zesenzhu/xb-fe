@@ -11,6 +11,52 @@ import {
   ArrowUpRight,
   Terminal,
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+// 自定义高颜值监控圆环
+const ProgressCircle = ({ percent, label, sublabel, color }: { percent: number; label: string; sublabel: string; color: string }) => {
+  const radius = 36;
+  const stroke = 6;
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (percent / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-2 p-4 bg-slate-50/50 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50 rounded-2xl relative">
+      <div className="relative w-24 h-24 flex items-center justify-center">
+        <svg className="w-full h-full transform -rotate-90">
+          <circle
+            className="text-slate-100 dark:text-zinc-800"
+            strokeWidth={stroke}
+            stroke="currentColor"
+            fill="transparent"
+            r={normalizedRadius}
+            cx="48"
+            cy="48"
+          />
+          <circle
+            className={color}
+            strokeWidth={stroke}
+            strokeDasharray={circumference + ' ' + circumference}
+            style={{ strokeDashoffset }}
+            strokeLinecap="round"
+            fill="transparent"
+            r={normalizedRadius}
+            cx="48"
+            cy="48"
+          />
+        </svg>
+        <div className="absolute text-center">
+          <span className="text-lg font-black tracking-tight">{percent}%</span>
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">{label}</p>
+        <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-0.5">{sublabel}</p>
+      </div>
+    </div>
+  );
+};
 import { Button } from '@/components/ui/button';
 import {
   AreaChart,
@@ -138,7 +184,20 @@ export default function DashboardPage() {
     );
   }
 
-  const { cards, trendData, modelData, recentLogs } = data;
+  const { cards, trendData, modelData, recentLogs, serverHealth } = data;
+
+  const handleClearLogs = async (days: number) => {
+    const confirmed = window.confirm(`您确定要永久清空系统数据库中 ${days} 天前的运行日志吗？该操作不可逆，将释放大量磁盘空间。`);
+    if (!confirmed) return;
+
+    try {
+      const res: any = await api.post('/dashboard/clear-logs', { days });
+      toast.success(res.message || '清理日志成功');
+      fetchDashboardData();
+    } catch (err) {
+      toast.error('清理日志失败，请检查管理员权限');
+    }
+  };
 
   return (
     <div className="space-y-6 select-none animate-in fade-in duration-300">
@@ -273,6 +332,80 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 服务器监控与日志资源维护面板 */}
+      {serverHealth && (
+        <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-sm font-bold tracking-tight">服务器资源监控与数据库维护</CardTitle>
+            <CardDescription className="text-xs">
+              实时监测 Node.js 服务器 CPU、内存、本地根分区磁盘可用额度以及 ScriptLog 数据库表物理体积大小
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <ProgressCircle
+                percent={serverHealth.cpu?.usageRate || 0}
+                label="CPU 使用率"
+                sublabel={`${serverHealth.cpu?.cores || 1} 核 (1min 负载: ${serverHealth.cpu?.loadAvg?.[0]?.toFixed(2) || '0.00'})`}
+                color="text-indigo-500 dark:text-indigo-400"
+              />
+              <ProgressCircle
+                percent={serverHealth.memory?.usageRate || 0}
+                label="系统内存"
+                sublabel={`已用: ${serverHealth.memory?.used} / 总共: ${serverHealth.memory?.total}`}
+                color="text-sky-500 dark:text-sky-400"
+              />
+              <ProgressCircle
+                percent={serverHealth.disk?.usageRate || 0}
+                label="根磁盘占用"
+                sublabel={`可用: ${serverHealth.disk?.available} / 总容量: ${serverHealth.disk?.total}`}
+                color={serverHealth.disk?.usageRate > 85 ? 'text-red-500' : 'text-emerald-500'}
+              />
+
+              {/* 日志库占用 & 快捷维护 */}
+              <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50 rounded-2xl flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-mono uppercase bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-extrabold text-slate-500 dark:text-zinc-400">
+                    Database Logs
+                  </span>
+                  <div className="pt-1">
+                    <p className="text-xs font-bold text-slate-400 dark:text-zinc-500">当前日志行数</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-zinc-100 tracking-tight">
+                      {serverHealth.logs?.count?.toLocaleString() || 0} 条
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 dark:text-zinc-500">表磁盘体积</p>
+                    <p className="text-sm font-black text-indigo-500 dark:text-indigo-400 tracking-tight">
+                      {serverHealth.logs?.dbSize || '0 B'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex gap-2">
+                  <Button
+                    onClick={() => handleClearLogs(30)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-[10px] h-7 font-bold dark:border-zinc-700 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50"
+                  >
+                    清理30天前
+                  </Button>
+                  <Button
+                    onClick={() => handleClearLogs(7)}
+                    variant="destructive"
+                    size="sm"
+                    className="flex-1 text-[10px] h-7 font-bold"
+                  >
+                    清理7天前
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 3. 底层：最新运行警报日志列表 */}
       <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
