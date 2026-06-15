@@ -15,6 +15,7 @@ export interface CodeTableProps {
   onSelectionChange: (keys: React.Key[]) => void;
   onAdjustClick: (record: LicenseCode) => void;
   onSuccess: () => void;
+  onDeviceClick?: (deviceId: string, code: string) => void;
 }
 
 export default function CodeTable({
@@ -23,6 +24,7 @@ export default function CodeTable({
   onSelectionChange,
   onAdjustClick,
   onSuccess,
+  onDeviceClick,
 }: CodeTableProps) {
 
   // 状态开关
@@ -172,13 +174,18 @@ export default function CodeTable({
       dataIndex: 'deviceId',
       key: 'deviceId',
       width: 140,
-      render: (dev: string | null) =>
+      render: (dev: string | null, record: LicenseCode) =>
         dev ? (
           <Space>
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40">
-              <Cpu className="w-3.5 h-3.5" />
-              {dev}
-            </span>
+            <Tooltip title="点击查看设备运行状态与最新日志">
+              <span 
+                onClick={() => onDeviceClick?.(dev, record.code)}
+                className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.97] transition-all select-none animate-pulse"
+              >
+                <Cpu className="w-3.5 h-3.5" />
+                {dev}
+              </span>
+            </Tooltip>
           </Space>
         ) : (
           <span className="text-slate-400 italic text-xs">暂无绑定</span>

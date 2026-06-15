@@ -13,6 +13,7 @@ import AdjustModal from './_components/AdjustModal';
 import BatchAdjustModal from './_components/BatchAdjustModal';
 import ImportModal from './_components/ImportModal';
 import { LicenseCode } from './_components/types';
+import DeviceLogModal from './_components/DeviceLogModal';
 
 export default function CodePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +22,11 @@ export default function CodePage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<LicenseCode | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // 物理设备状态详情与日志终端弹窗控制
+  const [isDeviceLogModalOpen, setIsDeviceLogModalOpen] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [selectedDeviceCode, setSelectedDeviceCode] = useState<string>('');
 
   // 动态锁定外层 main 容器的高，隐藏其纵向滚动条，防止双滚动条
   useEffect(() => {
@@ -122,6 +128,11 @@ export default function CodePage() {
                     setIsAdjustModalOpen(true);
                   }}
                   onSuccess={refetch}
+                  onDeviceClick={(deviceId, code) => {
+                    setSelectedDeviceId(deviceId);
+                    setSelectedDeviceCode(code);
+                    setIsDeviceLogModalOpen(true);
+                  }}
                 />
               </div>
             )
@@ -177,6 +188,18 @@ export default function CodePage() {
         onCancel={() => setIsImportModalOpen(false)}
         onSuccess={() => {
           refetch();
+        }}
+      />
+
+      {/* 物理设备运行快照与日志终端弹窗 */}
+      <DeviceLogModal
+        open={isDeviceLogModalOpen}
+        deviceId={selectedDeviceId}
+        code={selectedDeviceCode}
+        onCancel={() => {
+          setIsDeviceLogModalOpen(false);
+          setSelectedDeviceId('');
+          setSelectedDeviceCode('');
         }}
       />
     </div>

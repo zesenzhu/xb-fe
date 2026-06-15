@@ -287,6 +287,31 @@ export default function DevicePage() {
     message.success(`指令 [${values.command}] 推送成功！`);
   };
 
+  const handleExportLogs = async (deviceId: string, deviceName: string) => {
+    const key = 'export-logs';
+    try {
+      message.loading({ content: '正在生成日志文件并下载...', key });
+      const response = await api.get<unknown, Blob>('/logs/export', {
+        params: { deviceId },
+        responseType: 'blob',
+      });
+      
+      const blob = response;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `设备_${deviceName || deviceId}_24h日志.log`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success({ content: '日志导出下载成功！', key });
+    } catch (err: any) {
+      message.error({ content: err.message || '导出日志失败', key });
+    }
+  };
+
   const formatTime = (timeStr: string | null) => {
     if (!timeStr) return '无心跳';
     try {
@@ -592,7 +617,14 @@ export default function DevicePage() {
                       </div>
                     </CardContent>
 
-                    <CardFooter className="pt-2 pb-3 border-t border-slate-100 dark:border-zinc-800/50 bg-slate-50/50 dark:bg-zinc-800/10 flex justify-end gap-2">
+                    <CardFooter className="pt-2 pb-3 border-t border-slate-100 dark:border-zinc-800/50 bg-slate-50/50 dark:bg-zinc-800/10 flex justify-end gap-2 flex-wrap">
+                      <Button
+                        size="small"
+                        className="font-bold text-[10px] h-7 border-slate-200 dark:border-zinc-700 hover:text-indigo-500 dark:hover:text-indigo-400"
+                        onClick={() => handleExportLogs(dev.id, dev.name)}
+                      >
+                        导出日志
+                      </Button>
                       {alertMailEnabled && (
                         <Button
                           size="small"

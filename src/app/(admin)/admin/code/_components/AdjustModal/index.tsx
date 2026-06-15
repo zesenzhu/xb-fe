@@ -180,6 +180,31 @@ export default function AdjustModal({
     });
   };
 
+  const handleExportLogs = async (deviceId: string, deviceName: string) => {
+    const key = 'export-logs';
+    try {
+      message.loading({ content: '正在生成日志文件并下载...', key });
+      const response = await api.get<unknown, Blob>('/logs/export', {
+        params: { deviceId },
+        responseType: 'blob',
+      });
+      
+      const blob = response;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `设备_${deviceName || deviceId}_24h日志.log`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success({ content: '日志导出下载成功！', key });
+    } catch (err: any) {
+      message.error({ content: err.message || '导出日志失败', key });
+    }
+  };
+
   return (
     <Modal
       title={
@@ -316,9 +341,17 @@ export default function AdjustModal({
                   {
                     title: '操作',
                     key: 'action',
-                    width: 140,
+                    width: 200,
                     render: (_, r) => (
                       <div className="flex gap-2">
+                        <Button 
+                          type="link" 
+                          size="small" 
+                          className="p-0 text-indigo-600 hover:text-indigo-500 font-bold"
+                          onClick={() => handleExportLogs(r.id, r.name)}
+                        >
+                          导出日志
+                        </Button>
                         <Button 
                           type="link" 
                           danger 

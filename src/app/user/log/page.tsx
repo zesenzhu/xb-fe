@@ -267,10 +267,10 @@ function DeviceLogDetail() {
             variant="ghost"
             size="sm"
             onClick={() => router.push('/user/device')}
-            className="text-[11px] font-black h-7 px-2.5 rounded-lg border border-slate-200 dark:border-zinc-800 flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-zinc-900"
+            className="text-[11px] font-black h-7 w-7 p-0 rounded-lg border border-slate-200 dark:border-zinc-800 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-zinc-900"
+            title="返回物理设备"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            返回物理设备
           </Button>
           <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800" />
           <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
@@ -286,11 +286,6 @@ function DeviceLogDetail() {
               </span>
             )}
           </h1>
-          {controlsCollapsed && (
-            <span className="text-[9px] bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-zinc-500 font-extrabold uppercase animate-in fade-in duration-200">
-              已收起控制栏
-            </span>
-          )}
         </div>
 
         {/* 折叠切换按钮 */}
