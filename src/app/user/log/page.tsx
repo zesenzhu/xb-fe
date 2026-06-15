@@ -1,6 +1,7 @@
-'use client'
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -16,9 +17,11 @@ import {
   Wifi,
   ChevronUp,
   ChevronDown,
+  ArrowLeft,
+  Battery,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, DeviceItem } from '@/store/useUserStore'
 import { api } from '@/lib/axios'
 
 interface LogLine {
@@ -29,7 +32,10 @@ interface LogLine {
   content: string
 }
 
-export default function UserLogPage() {
+function DeviceLogDetail() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const paramDeviceId = searchParams.get('deviceId') || searchParams.get('deviceid')
   const { user, activeDevices, subscribeLogs } = useUserStore()
 
   const [activeDeviceId, setActiveDeviceId] = useState<string>('')
@@ -44,6 +50,10 @@ export default function UserLogPage() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [listHeight, setListHeight] = useState(480)
+
+  // 校验状态
+  const [isValidating, setIsValidating] = useState(true)
+  const [isValid, setIsValid] = useState(true)
 
   // 1. 动态监听容器大小，保证高度在移动端与折叠状态下自适应
   useEffect(() => {
@@ -62,26 +72,42 @@ export default function UserLogPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [controlsCollapsed])
 
-  // 1.5 当全局物理设备列表更新时，自动选择默认设备 ID
+  // 1.5 安全校验路由传参中的 deviceId 是否合法
   useEffect(() => {
-    if (activeDevices.length > 0) {
-      setActiveDeviceId((current) => {
-        const exists = activeDevices.some((d) => d.id === current);
-        // 如果当前选中设备不存在或还是默认的浏览器设备，则选择第一个物理设备
-        if (!exists || current === user?.deviceId) {
-          return activeDevices[0].id;
+    const validateDevice = async () => {
+      if (!user?.username) {
+        setIsValidating(false)
+        setIsValid(false)
+        return
+      }
+      try {
+        const response = (await api.get('/register-codes/my-devices', {
+          params: { code: user.username },
+        })) as DeviceItem[]
+        const devices = response || []
+        if (!paramDeviceId) {
+          setIsValid(false)
+        } else {
+          const exists = devices.some((d: DeviceItem) => d.id === paramDeviceId)
+          setIsValid(exists)
+          if (exists) {
+            setActiveDeviceId(paramDeviceId)
+          }
         }
-        return current;
-      });
-    } else {
-      setActiveDeviceId(user?.deviceId || '');
+      } catch (err) {
+        console.error('[Logs Validation] 验证物理设备 ID 失败:', err)
+        setIsValid(false)
+      } finally {
+        setIsValidating(false)
+      }
     }
-  }, [activeDevices, user?.deviceId]);
+    validateDevice()
+  }, [paramDeviceId, user?.username])
 
   // 2. 真实接入后端历史日志接口
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!activeDeviceId) return
+      if (!activeDeviceId || !isValid) return
       try {
         const response: any = await api.get('/logs/history', {
           params: {
@@ -102,7 +128,7 @@ export default function UserLogPage() {
     }
 
     fetchHistory()
-  }, [activeDeviceId, levelFilter])
+  }, [activeDeviceId, levelFilter, isValid])
 
   // 3. 真实接入全局共享 stream 流的日志订阅机制
   useEffect(() => {
@@ -177,14 +203,88 @@ export default function UserLogPage() {
     toast.success('本地运行日志已成功导出')
   }
 
+  const currentDevice = activeDevices.find((d) => d.id === activeDeviceId)
+
+  if (isValidating) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 font-sans">
+        <div className="relative w-10 h-10">
+          <div className="absolute inset-0 rounded-full border-2 border-slate-200 dark:border-zinc-800" />
+          <div className="absolute inset-0 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+        </div>
+        <p className="text-xs font-bold text-slate-500 dark:text-zinc-550 font-mono tracking-wider animate-pulse">
+          SECURITY VALIDATING...
+        </p>
+      </div>
+    )
+  }
+
+  if (!isValid) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] px-4 font-sans animate-in fade-in duration-500 select-none">
+        <div className="relative max-w-md w-full p-8 rounded-3xl bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-slate-200/50 dark:border-zinc-800/50 shadow-2xl text-center space-y-6 overflow-hidden">
+          {/* 背景流光 */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-red-500/10 dark:bg-red-500/5 blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-emerald-500/10 dark:bg-emerald-500/5 blur-3xl" />
+          
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shadow-lg shadow-red-500/5 animate-bounce">
+            <Terminal className="w-8 h-8" />
+          </div>
+          
+          <div className="space-y-2 relative z-10">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-wider">
+              未检测到合法的物理设备
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-550 leading-relaxed font-semibold">
+              当前请求的物理设备 ID 无效、已解绑或无权访问。请检查路由参数或返回控制台。
+            </p>
+            {paramDeviceId && (
+              <p className="text-[10px] font-mono bg-slate-105 dark:bg-zinc-950 p-2 rounded-lg text-slate-400 dark:text-zinc-550 break-all border border-slate-200 dark:border-zinc-850">
+                请求 ID: {paramDeviceId}
+              </p>
+            )}
+          </div>
+          
+          <div className="pt-2 relative z-10">
+            <Button
+              onClick={() => router.push('/user/device')}
+              className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs tracking-widest shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              返回我的设备列表
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4 select-none">
       {/* 1. 面板标题头与折叠控制开关 */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-zinc-800/40 pb-2.5">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4.5 h-4.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
-          <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-white">
-            用户端实时运行终端
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/user/device')}
+            className="text-[11px] font-black h-7 px-2.5 rounded-lg border border-slate-200 dark:border-zinc-800 flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-zinc-900"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            返回物理设备
+          </Button>
+          <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800" />
+          <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <span>{currentDevice ? currentDevice.name : '设备详情'}</span>
+            {currentDevice && (
+              <span className={cn(
+                "text-[10px] font-extrabold px-1.5 py-0.5 rounded border tracking-wider select-none shrink-0",
+                currentDevice.status === 'online'
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                  : "bg-zinc-500/10 border-zinc-500/20 text-zinc-500"
+              )}>
+                {currentDevice.status === 'online' ? '在线' : '离线'}
+              </span>
+            )}
           </h1>
           {controlsCollapsed && (
             <span className="text-[9px] bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-zinc-500 font-extrabold uppercase animate-in fade-in duration-200">
@@ -344,59 +444,48 @@ export default function UserLogPage() {
             </span>
           </div>
 
-          {/* 右侧设备通道切换器 */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto border-t border-slate-200 dark:border-zinc-800/40 pt-2 sm:pt-0 sm:border-t-0">
-            <div className="flex items-center gap-1.5">
-              <Wifi
-                className={cn(
-                  'w-3.5 h-3.5 shrink-0',
-                  activeDeviceId
-                    ? 'text-emerald-500 dark:text-emerald-400'
-                    : 'text-slate-400 dark:text-zinc-500',
-                )}
-              />
-              <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-500 shrink-0">
-                设备通道:
+          {/* 右侧设备通道信息面板（唯一物理设备） */}
+          {currentDevice && (
+            <div className="flex flex-row items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-slate-200 dark:border-zinc-850/60 pt-2 sm:pt-0 sm:border-t-0 text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-500">
+              <span className="flex items-center gap-1">
+                <Wifi
+                  className={cn(
+                    'w-3.5 h-3.5 shrink-0',
+                    currentDevice.status === 'online'
+                      ? 'text-emerald-500 dark:text-emerald-400'
+                      : 'text-slate-400 dark:text-zinc-650',
+                  )}
+                />
+                <span className="text-[10px] text-slate-450 dark:text-zinc-450">物理链路:</span>
+                <span className={cn(
+                  "px-1 py-0.2 rounded text-[9px] uppercase font-extrabold",
+                  currentDevice.status === 'online' ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-500 bg-slate-500/10'
+                )}>
+                  {currentDevice.status === 'online' ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </span>
-            </div>
+              
+              <div className="h-3 w-px bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
 
-            <select
-              value={activeDeviceId}
-              onChange={(e) => {
-                const newId = e.target.value
-                setActiveDeviceId(newId)
-                setLogs([]) // 切换设备时清空历史日志缓存，防止混淆
-              }}
-              className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] h-6 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 max-w-[190px] sm:max-w-xs truncate"
-            >
-              {activeDevices.map((dev) => (
-                <option
-                  key={dev.id}
-                  value={dev.id}
-                  className="bg-white dark:bg-zinc-950 text-slate-700 dark:text-zinc-300"
-                >
-                  {dev.name || dev.id} ({dev.status === 'online' ? '在线' : '离线'})
-                </option>
-              ))}
-              {user?.deviceId &&
-                !activeDevices.some((d) => d.id === user.deviceId) && (
-                  <option
-                    value={user.deviceId}
-                    className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"
-                  >
-                    {user.deviceId} (浏览器大屏-无日志)
-                  </option>
-                )}
-              {activeDevices.length === 0 && !user?.deviceId && (
-                <option
-                  value=""
-                  className="bg-white dark:bg-zinc-950 text-slate-400 dark:text-zinc-500"
-                >
-                  暂无绑定物理设备
-                </option>
+              {currentDevice.ip && (
+                <span className="flex items-center gap-1">
+                  <span>IP:</span>
+                  <span className="text-slate-700 dark:text-zinc-300 font-semibold">{currentDevice.ip}</span>
+                </span>
               )}
-            </select>
-          </div>
+
+              {currentDevice.battery !== undefined && (
+                <>
+                  <div className="h-3 w-px bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+                  <span className="flex items-center gap-1">
+                    <Battery className={cn("w-3.5 h-3.5", currentDevice.battery < 20 ? "text-rose-500 animate-pulse" : "text-sky-500")} />
+                    <span>电量:</span>
+                    <span className="text-slate-700 dark:text-zinc-300 font-semibold">{currentDevice.battery}%</span>
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 原生日志渲染视窗 */}
@@ -465,5 +554,13 @@ export default function UserLogPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UserLogPage() {
+  return (
+    <React.Suspense fallback={<div className="p-8 text-center text-xs text-slate-500 font-mono">Initializing log terminal...</div>}>
+      <DeviceLogDetail />
+    </React.Suspense>
   )
 }

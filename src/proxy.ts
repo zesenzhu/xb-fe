@@ -38,9 +38,11 @@ export function proxy(request: NextRequest) {
   // -------------------------------------------------------------
   // 二、拦截对外用户端受保护路由
   // -------------------------------------------------------------
-  const isUserProtected = userProtectedPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  );
+  const isUserProtected =
+    pathname === '/user' ||
+    userProtectedPaths.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
 
   if (isUserProtected) {
     if (!userAccessToken && !userRefreshToken) {
@@ -63,7 +65,7 @@ export function proxy(request: NextRequest) {
   // 普通用户登录拦截
   if (pathname === '/user/login') {
     if (userAccessToken) {
-      return NextResponse.redirect(new URL('/user/log', request.url));
+      return NextResponse.redirect(new URL('/user', request.url));
     }
   }
 

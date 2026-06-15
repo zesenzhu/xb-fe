@@ -17,6 +17,7 @@ import {
   Wifi,
   WifiOff,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { disconnectSocket } from '@/lib/socket';
@@ -31,8 +32,8 @@ interface NavItem {
 }
 
 const userNavItems: NavItem[] = [
-  { name: '实时运行日志', path: '/user/log', icon: FileCode2 },
-  { name: '我的物理设备', path: '/user/device', icon: Cpu },
+  { name: '我的设备', path: '/user/device', icon: Cpu },
+  { name: '我的设置', path: '/user/settings', icon: Settings },
 ];
 
 export default function UserPortalLayout({ children }: { children: React.ReactNode }) {
@@ -229,7 +230,7 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
         
         {/* LOGO 与长连接状态呼吸灯 */}
         <div className="flex items-center gap-6">
-          <Link href="/user/log" className="flex items-center gap-2 font-bold tracking-widest text-slate-900 dark:text-white">
+          <Link href="/user" className="flex items-center gap-2 font-bold tracking-widest text-slate-900 dark:text-white">
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/10">
               <Sparkles className="w-4 h-4 text-white dark:text-zinc-950 shrink-0" />
             </div>
@@ -269,7 +270,10 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
         <nav className="hidden md:flex items-center gap-1.5">
           {userNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+            const isActive =
+              pathname === item.path ||
+              pathname.startsWith(`${item.path}/`) ||
+              (item.path === '/user/device' && pathname.startsWith('/user/log'));
 
             return (
               <Link
@@ -347,7 +351,10 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
       <nav className="md:hidden h-12 bg-white/90 dark:bg-zinc-900/90 border-b border-slate-200 dark:border-zinc-800/60 px-4 flex items-center justify-around select-none shrink-0 sticky top-16 z-40 backdrop-blur">
         {userNavItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+          const isActive =
+            pathname === item.path ||
+            pathname.startsWith(`${item.path}/`) ||
+            (item.path === '/user/device' && pathname.startsWith('/user/log'));
 
           return (
             <Link
