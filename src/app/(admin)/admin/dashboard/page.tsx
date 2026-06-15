@@ -15,39 +15,39 @@ import { toast } from 'sonner';
 
 // 自定义高颜值监控圆环
 const ProgressCircle = ({ percent, label, sublabel, color }: { percent: number; label: string; sublabel: string; color: string }) => {
-  const radius = 36;
+  const radius = 38;
   const stroke = 6;
-  const normalizedRadius = radius - stroke * 2;
-  const circumference = normalizedRadius * 2 * Math.PI;
+  const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (percent / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-2 p-4 bg-slate-50/50 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50 rounded-2xl relative">
       <div className="relative w-24 h-24 flex items-center justify-center">
-        <svg className="w-full h-full transform -rotate-90">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
           <circle
-            className="text-slate-100 dark:text-zinc-800"
+            className="text-slate-100 dark:text-zinc-850"
             strokeWidth={stroke}
             stroke="currentColor"
             fill="transparent"
-            r={normalizedRadius}
+            r={radius}
             cx="48"
             cy="48"
           />
           <circle
             className={color}
             strokeWidth={stroke}
+            stroke="currentColor"
             strokeDasharray={circumference + ' ' + circumference}
             style={{ strokeDashoffset }}
             strokeLinecap="round"
             fill="transparent"
-            r={normalizedRadius}
+            r={radius}
             cx="48"
             cy="48"
           />
         </svg>
         <div className="absolute text-center">
-          <span className="text-lg font-black tracking-tight">{percent}%</span>
+          <span className="text-lg font-black tracking-tight text-slate-800 dark:text-zinc-100">{percent}%</span>
         </div>
       </div>
       <div className="text-center">

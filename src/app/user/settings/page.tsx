@@ -122,10 +122,9 @@ export default function UserSettingsPage() {
     let active = true;
 
     if (activeTab === 'alertConfig') {
-      api.get<AlertConfigResponse>(`/register-codes/my-alert?code=${code}`)
-        .then((res) => {
+      api.get<unknown, AlertConfigResponse>(`/register-codes/my-alert?code=${code}`)
+        .then((data) => {
           if (!active) return;
-          const data = res.data;
           setConfigEmail(data.alertEmail || '');
           const cfg = data.alertConfig || {};
           setConfigOffline(cfg.offline !== false);
@@ -145,20 +144,20 @@ export default function UserSettingsPage() {
         }
       });
       Promise.all([
-        api.get<AuditHistory[]>('/register-codes/my-devices/history', { params: { code } }),
-        api.get<BlacklistItem[]>('/register-codes/my-devices/blacklist', { params: { code } }),
+        api.get<unknown, AuditHistory[]>('/register-codes/my-devices/history', { params: { code } }),
+        api.get<unknown, BlacklistItem[]>('/register-codes/my-devices/blacklist', { params: { code } }),
       ])
         .then(([hist, black]) => {
           if (!active) return;
           setHistoryList(
-            (hist.data || []).map((h) => ({
+            (hist || []).map((h) => ({
               ...h,
               deviceName: h.deviceName || '未知设备',
               lastIp: h.lastIp || '127.0.0.1',
             }))
           );
           setBlacklist(
-            (black.data || []).map((b) => ({
+            (black || []).map((b) => ({
               ...b,
               deviceName: b.deviceName || '未知设备',
               reason: b.reason || '无',
