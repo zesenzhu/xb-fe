@@ -9,6 +9,7 @@ export interface LicenseCode {
   currentActivations: number;
   rateLimit: number;
   deviceId: string | null;
+  deviceIds?: string[];
   status: 'unused' | 'active' | 'expired' | 'full' | 'disabled';
   activatedAt: string | null;
   expiresAt: string | null;

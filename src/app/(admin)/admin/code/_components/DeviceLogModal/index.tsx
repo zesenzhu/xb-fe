@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Tag, Space, message, Input, Select, Tooltip } from 'antd';
-import { Cpu, Download, RefreshCw, Terminal, Search, Laptop, Smartphone, Cloud, Lock, Unlock, Wifi, Battery, Activity } from 'lucide-react';
+import { Modal, Button, message, Input, Select } from 'antd';
+import { Download, RefreshCw, Terminal, Search, Laptop, Smartphone, Cloud, Activity } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +48,8 @@ export default function DeviceLogModal({
   code,
   onCancel,
 }: DeviceLogModalProps) {
+  const [currentActiveDeviceId, setCurrentActiveDeviceId] = useState<string>(deviceId);
+  const [availableDevices, setAvailableDevices] = useState<DeviceItem[]>([]);
   const [deviceInfo, setDeviceInfo] = useState<DeviceItem | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,13 +61,13 @@ export default function DeviceLogModal({
 
   // 1. 获取设备与日志数据
   const fetchData = async () => {
-    if (!deviceId) return;
+    if (!currentActiveDeviceId) return;
     setLoading(true);
     try {
       // 1.1 并行拉取最新历史日志和全部设备快照
       const [logsRes, devicesRes]: any[] = await Promise.all([
         api.get('/logs/history', {
-          params: { deviceId, limit: 120 },
+          params: { deviceId: currentActiveDeviceId, limit: 120 },
         }),
         api.get('/register-codes/all-devices'),
       ]);
@@ -78,16 +80,20 @@ export default function DeviceLogModal({
         setLogs([]);
       }
 
-      // 1.3 查找匹配的物理设备信息
+      // 1.3 查找匹配的物理设备信息与当前卡密下的所有设备
       if (devicesRes && Array.isArray(devicesRes)) {
-        const found = devicesRes.find((d: DeviceItem) => d.id === deviceId);
+        // 过滤出当前卡密下的所有绑定设备
+        const bound = devicesRes.filter((d: DeviceItem) => d.licenseBound === code);
+        setAvailableDevices(bound);
+
+        const found = devicesRes.find((d: DeviceItem) => d.id === currentActiveDeviceId);
         if (found) {
           setDeviceInfo(found);
         } else {
           // 降级构建虚拟空设备以便展示基本 ID
-          setDeviceInfo({
-            id: deviceId,
-            name: `设备 (解绑离线)`,
+          const fallbackDev: DeviceItem = {
+            id: currentActiveDeviceId,
+            name: `设备 (${currentActiveDeviceId.slice(0, 8)})`,
             ip: '--',
             status: 'offline',
             licenseBound: code,
@@ -100,7 +106,11 @@ export default function DeviceLogModal({
             isLocked: false,
             vpnStatus: false,
             battery: 100,
-          });
+          };
+          setDeviceInfo(fallbackDev);
+          if (!bound.some(d => d.id === currentActiveDeviceId)) {
+            setAvailableDevices(prev => [...prev.filter(d => d.id !== currentActiveDeviceId), fallbackDev]);
+          }
         }
       }
     } catch (err: any) {
@@ -111,25 +121,32 @@ export default function DeviceLogModal({
   };
 
   useEffect(() => {
-    if (open && deviceId) {
+    if (deviceId) {
+      setCurrentActiveDeviceId(deviceId);
+    }
+  }, [deviceId]);
+
+  useEffect(() => {
+    if (open && currentActiveDeviceId) {
       fetchData();
     } else {
       setDeviceInfo(null);
       setLogs([]);
       setLevelFilter('ALL');
       setSearchQuery('');
+      setAvailableDevices([]);
     }
-  }, [open, deviceId]);
+  }, [open, currentActiveDeviceId]);
 
   // 2. 流式导出当前设备日志
   const handleExport = async () => {
-    if (!deviceId) return;
+    if (!currentActiveDeviceId) return;
     setExporting(true);
     const key = 'modal-export';
     try {
       message.loading({ content: '正在生成日志文件并下载...', key });
       const response = await api.get<unknown, Blob>('/logs/export', {
-        params: { deviceId },
+        params: { deviceId: currentActiveDeviceId },
         responseType: 'blob',
       });
       
@@ -137,7 +154,7 @@ export default function DeviceLogModal({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `设备_${deviceInfo?.name || deviceId}_24h日志.log`;
+      link.download = `设备_${deviceInfo?.name || currentActiveDeviceId}_24h日志.log`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -173,9 +190,27 @@ export default function DeviceLogModal({
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2 select-none">
-          <Terminal className="w-5 h-5 text-emerald-500 animate-pulse" />
-          <span>设备运行状态与最新日志 TTY 控制台</span>
+        <div className="flex items-center justify-between gap-4 select-none pr-6 w-full">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-emerald-500 animate-pulse" />
+            <span className="font-extrabold text-sm text-slate-800 dark:text-zinc-100">设备运行状态与最新日志 TTY 控制台</span>
+          </div>
+          {availableDevices.length > 1 && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-slate-400 dark:text-zinc-500 font-bold text-[10px]">切换设备:</span>
+              <Select
+                value={currentActiveDeviceId}
+                onChange={(val) => setCurrentActiveDeviceId(val)}
+                size="small"
+                className="w-40 font-mono font-bold"
+                popupMatchSelectWidth={false}
+                options={availableDevices.map((d) => ({
+                  value: d.id,
+                  label: d.name.replace(/[-_]+(?=\)|）)/g, '') || d.id,
+                }))}
+              />
+            </div>
+          )}
         </div>
       }
       open={open}

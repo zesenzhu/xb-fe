@@ -171,25 +171,29 @@ export default function CodeTable({
     },
     {
       title: '绑定设备ID',
-      dataIndex: 'deviceId',
-      key: 'deviceId',
-      width: 140,
-      render: (dev: string | null, record: LicenseCode) =>
-        dev ? (
-          <Space>
-            <Tooltip title="点击查看设备运行状态与最新日志">
-              <span 
-                onClick={() => onDeviceClick?.(dev, record.code)}
-                className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.97] transition-all select-none animate-pulse"
-              >
-                <Cpu className="w-3.5 h-3.5" />
-                {dev}
-              </span>
-            </Tooltip>
+      dataIndex: 'deviceIds',
+      key: 'deviceIds',
+      width: 180,
+      render: (deviceIds: string[] | null, record: LicenseCode) => {
+        const ids = deviceIds || (record.deviceId ? [record.deviceId] : []);
+        return ids.length > 0 ? (
+          <Space size={[0, 6]} wrap className="max-w-[220px] py-1 select-none">
+            {ids.map((dev) => (
+              <Tooltip key={dev} title="点击查看设备运行状态与最新日志">
+                <span 
+                  onClick={() => onDeviceClick?.(dev, record.code)}
+                  className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.97] transition-all"
+                >
+                  <Cpu className="w-3.5 h-3.5" />
+                  {dev}
+                </span>
+              </Tooltip>
+            ))}
           </Space>
         ) : (
           <span className="text-slate-400 italic text-xs">暂无绑定</span>
-        ),
+        );
+      }
     },
     {
       title: '状态',
