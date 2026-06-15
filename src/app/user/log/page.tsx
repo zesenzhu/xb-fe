@@ -104,6 +104,11 @@ function DeviceLogDetail() {
     validateDevice()
   }, [paramDeviceId, user?.username])
 
+  // 1.8 当切换设备或过滤级别时，立即清空内存缓冲区，防止不同设备/级别的日志在网络延迟中混淆
+  useEffect(() => {
+    setLogs([])
+  }, [activeDeviceId, levelFilter])
+
   // 2. 真实接入后端历史日志接口
   useEffect(() => {
     const fetchHistory = async () => {
@@ -120,7 +125,28 @@ function DeviceLogDetail() {
         if (response && response.list) {
           // 后端返回是时间倒序的（最新在最前），展示时我们需要将其反转为正序（最老在最前，最新在尾部）
           const sortedHistory = [...response.list].reverse()
-          setLogs(sortedHistory)
+          
+          setLogs((prev) => {
+            // 合并当前已有的日志和拉回的历史日志
+            const merged = [...sortedHistory, ...prev];
+            // 以自然主键进行去重 (time + module + content + level)
+            const seen = new Set<string>();
+            const unique: LogLine[] = [];
+            
+            for (const item of merged) {
+              const key = `${item.time}_${item.module}_${item.content}_${item.level}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(item);
+              }
+            }
+            
+            // 限制缓冲区大小
+            if (unique.length > 3000) {
+              return unique.slice(-3000);
+            }
+            return unique;
+          });
         }
       } catch (err: any) {
         console.error('[Logs] 无法拉取历史归档日志:', err)
@@ -146,6 +172,18 @@ function DeviceLogDetail() {
         };
 
         setLogs((prev) => {
+          // 精准去重：针对同一个设备，若日志的时分秒、模块名、具体内容和告警级别完全一致，则视为重复，不予重复追加。
+          const isDuplicate = prev.some(
+            (item) =>
+              item.time === freshLog.time &&
+              item.module === freshLog.module &&
+              item.content === freshLog.content &&
+              item.level === freshLog.level
+          );
+          if (isDuplicate) {
+            return prev;
+          }
+
           const next = [...prev, freshLog];
           if (next.length > 3000) {
             return next.slice(-3000);
