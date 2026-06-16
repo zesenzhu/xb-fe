@@ -39,6 +39,7 @@ export interface DeviceItem {
   deviceType?: string;
   connectedAt?: string;
   currentTask?: string;
+  currentAccount?: string;
   runningTime?: number;
   lastError?: {
     message: string;
@@ -211,6 +212,7 @@ export const useUserStore = create<UserState>()(
                 fetchedAt: Date.now(),
                 runningTime: deviceInfo?.runningTime || 0,
                 currentTask: deviceInfo?.currentTask || '常规挂机',
+                currentAccount: deviceInfo?.currentAccount || '未登录',
                 scriptMemory: deviceInfo?.scriptMemory || 0,
                 frontApp: deviceInfo?.frontApp || 'unknown',
               };
@@ -232,6 +234,7 @@ export const useUserStore = create<UserState>()(
               deviceId,
               frontApp,
               currentTask,
+              currentAccount,
               runningTime,
               isLocked,
               vpnStatus,
@@ -248,6 +251,7 @@ export const useUserStore = create<UserState>()(
                     ip: ip || d.ip,
                     frontApp: frontApp !== undefined ? frontApp : d.frontApp,
                     currentTask: currentTask !== undefined ? currentTask : d.currentTask,
+                    currentAccount: currentAccount !== undefined ? currentAccount : d.currentAccount,
                     runningTime: runningTime !== undefined ? runningTime : d.runningTime,
                     isLocked: isLocked !== undefined ? isLocked : d.isLocked,
                     vpnStatus: vpnStatus !== undefined ? vpnStatus : d.vpnStatus,

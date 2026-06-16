@@ -24,6 +24,7 @@ interface DeviceItem {
   scriptMemory?: number;                 // 脚本当前内存 (KB)
   isSwitchingAccount?: number | boolean; // 换号状态中
   currentTask?: string;                  // 当前执行任务名称
+  currentAccount?: string;               // 当前运行账号
   runningTime?: number;                  // 物理脚本已运行时间 (秒)
 }
 

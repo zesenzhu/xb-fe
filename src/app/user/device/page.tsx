@@ -30,6 +30,7 @@ interface ClientDevice {
   deviceType?: string;
   connectedAt?: string; // 连接握手时间
   currentTask?: string;  // 当前正在执行的任务名称
+  currentAccount?: string; // 当前运行账号
   runningTime?: number;  // 物理脚本累计已运行时间 (秒)
   lastError?: {
     message: string;
@@ -276,6 +277,17 @@ export default function UserDeviceListPage() {
                       <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">当前任务:</span>
                       <span className="truncate flex-1 font-bold text-slate-700 dark:text-zinc-200" title={dev.currentTask}>
                         {dev.currentTask}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 当前运行的账号 */}
+                  {isOnline && dev.currentAccount && (
+                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none mt-2">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
+                      <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">当前账号:</span>
+                      <span className="truncate flex-1 font-bold text-slate-750 dark:text-zinc-200" title={dev.currentAccount}>
+                        {dev.currentAccount}
                       </span>
                     </div>
                   )}
