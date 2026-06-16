@@ -239,7 +239,8 @@ export const useUserStore = create<UserState>()(
               isLocked,
               vpnStatus,
               scriptMemory,
-              isSwitchingAccount
+              isSwitchingAccount,
+              heartbeatsCount
             } = payload;
             
             updated = updated.map((d) =>
@@ -257,6 +258,7 @@ export const useUserStore = create<UserState>()(
                     vpnStatus: vpnStatus !== undefined ? vpnStatus : d.vpnStatus,
                     scriptMemory: scriptMemory !== undefined ? scriptMemory : d.scriptMemory,
                     isSwitchingAccount: isSwitchingAccount !== undefined ? isSwitchingAccount : d.isSwitchingAccount,
+                    heartbeatsCount: heartbeatsCount !== undefined ? heartbeatsCount : d.heartbeatsCount,
                     fetchedAt: Date.now(), // 每次设备上报状态均刷新前端计时起点
                   }
                 : d
