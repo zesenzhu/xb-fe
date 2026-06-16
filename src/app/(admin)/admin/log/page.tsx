@@ -56,7 +56,9 @@ export default function LogPage() {
   // 当选择不同注册码时，动态计算并填入绑定的物理设备下拉菜单
   const handleCodeSelect = (codeText: string) => {
     setSelectedCode(codeText);
+    console.log('[DEBUG LogPage] codeText selected:', codeText);
     const matched = codeOptions.find(o => o.code === codeText);
+    console.log('[DEBUG LogPage] matched codeOption:', matched);
     if (matched) {
       let devicesList: any[] = [];
       try {
@@ -64,12 +66,25 @@ export default function LogPage() {
           ? JSON.parse(matched.bindDevices)
           : (matched.bindDevices || []);
       } catch (e) {
+        console.error('[DEBUG LogPage] parse bindDevices error:', e);
         devicesList = [];
       }
-      const options = devicesList.map((d: any) => ({
-        value: d.deviceId,
-        label: d.name ? `${d.name} (${d.deviceId.slice(0, 8)})` : d.deviceId,
-      }));
+      console.log('[DEBUG LogPage] parsed devicesList:', devicesList);
+      
+      // 保证 devicesList 必须是数组，如果是对象则包成数组
+      if (devicesList && !Array.isArray(devicesList)) {
+        devicesList = [devicesList];
+      }
+      
+      const options = (devicesList || []).map((d: any) => {
+        if (!d || !d.deviceId) return null;
+        return {
+          value: d.deviceId,
+          label: d.name ? `${d.name} (${d.deviceId.slice(0, 8)})` : d.deviceId,
+        };
+      }).filter(Boolean) as { value: string; label: string }[];
+      
+      console.log('[DEBUG LogPage] built options:', options);
       setDeviceOptions(options);
       if (options.length > 0) {
         setSelectedDeviceId(options[0].value);
