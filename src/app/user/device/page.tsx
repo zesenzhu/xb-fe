@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Cpu, Power, Activity, ShieldCheck, RefreshCw, HardDrive, Lock, Unlock, Wifi, Battery, ListTodo } from 'lucide-react';
+import { Cpu, Power, Activity, ShieldCheck, RefreshCw, HardDrive, Lock, Unlock, Wifi, Battery, ListTodo, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -31,6 +31,10 @@ interface ClientDevice {
   connectedAt?: string; // 连接握手时间
   currentTask?: string;  // 当前正在执行的任务名称
   runningTime?: number;  // 物理脚本累计已运行时间 (秒)
+  lastError?: {
+    message: string;
+    timestamp: string;
+  } | null;
 }
 
 export default function UserDeviceListPage() {
@@ -260,6 +264,38 @@ export default function UserDeviceListPage() {
                       <span className="truncate flex-1 font-bold text-slate-700 dark:text-zinc-200" title={dev.currentTask}>
                         {dev.currentTask}
                       </span>
+                    </div>
+                  )}
+
+                  {/* 崩溃与脚本异常警报区域 */}
+                  {dev.lastError && (
+                    <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl text-[11px] text-rose-700 dark:text-rose-400 space-y-1 select-none">
+                      <div className="flex items-center gap-1 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-500 animate-bounce" />
+                        <span>最近脚本异常警报:</span>
+                      </div>
+                      <p className="font-mono break-all line-clamp-2 leading-relaxed text-rose-800 dark:text-rose-300">
+                        {dev.lastError.message.startsWith('CRASH_REPORT:')
+                          ? (() => {
+                              const msg = dev.lastError.message;
+                              const task = msg.match(/任务=\[(.*?)\]/)?.[1] || '未知任务';
+                              const line = msg.match(/:(\d+):/)?.[1] ? `第 ${msg.match(/:(\d+):/)?.[1]} 行` : '未知行';
+                              const reason = msg.match(/原因=\[(.*?)\]/)?.[1] || '未知原因';
+                              return `崩溃任务 [${task}] (${line}): ${reason}`;
+                            })()
+                          : dev.lastError.message}
+                      </p>
+                      <div className="text-[9px] text-rose-500/70 dark:text-rose-450 flex justify-between items-center pt-0.5">
+                        <span>发生时间: {new Date(dev.lastError.timestamp).toLocaleString()}</span>
+                        <button
+                          onClick={() => {
+                            window.alert(`【脚本崩溃调用栈详情】\n\n报错时间：${new Date(dev.lastError!.timestamp).toLocaleString()}\n\n上报原文：\n${dev.lastError!.message}`);
+                          }}
+                          className="underline hover:text-rose-900 dark:hover:text-rose-200 font-extrabold cursor-pointer"
+                        >
+                          查看堆栈
+                        </button>
+                      </div>
                     </div>
                   )}
 
