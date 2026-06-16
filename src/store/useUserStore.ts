@@ -24,7 +24,27 @@ export interface DeviceItem {
   name: string;
   ip: string;
   status: 'online' | 'offline';
+  temperature?: number;
+  cpuLoad?: number;
+  rtt?: number;
+  licenseBound?: string;
+  heartbeatsCount?: number;
+  diskSpace?: string;
+  scriptMemory?: number;
+  isSwitchingAccount?: boolean | number;
+  vpnStatus?: boolean;
+  isLocked?: boolean;
   battery?: number;
+  frontApp?: string;
+  deviceType?: string;
+  connectedAt?: string;
+  currentTask?: string;
+  runningTime?: number;
+  lastError?: {
+    message: string;
+    timestamp: string;
+  } | null;
+  fetchedAt?: number;
 }
 
 // UserStore 状态接口定义
@@ -160,7 +180,13 @@ export const useUserStore = create<UserState>()(
 
       setSseConnected: (connected: boolean) => set({ sseConnected: connected }),
 
-      setDevicesList: (devices: DeviceItem[]) => set({ activeDevices: devices }),
+      setDevicesList: (devices: DeviceItem[]) => {
+        const listWithFetchedAt = devices.map(d => ({
+          ...d,
+          fetchedAt: Date.now()
+        }));
+        set({ activeDevices: listWithFetchedAt });
+      },
 
       handleDeviceEvent: (type: 'device_list' | 'device_status', payload: any) =>
         set((state) => {
@@ -177,7 +203,16 @@ export const useUserStore = create<UserState>()(
                 name: resolvedName,
                 ip: ip || '',
                 status: 'online',
-                battery: deviceInfo?.battery || 100,
+                battery: deviceInfo?.battery !== undefined ? deviceInfo.battery : 100,
+                deviceType: deviceInfo?.deviceType || 'unknown',
+                vpnStatus: deviceInfo?.vpnStatus === 1 || deviceInfo?.vpnStatus === true,
+                isLocked: deviceInfo?.isLocked === 1 || deviceInfo?.isLocked === true,
+                connectedAt: deviceInfo?.connectedAt || new Date().toISOString(),
+                fetchedAt: Date.now(),
+                runningTime: deviceInfo?.runningTime || 0,
+                currentTask: deviceInfo?.currentTask || '常规挂机',
+                scriptMemory: deviceInfo?.scriptMemory || 0,
+                frontApp: deviceInfo?.frontApp || 'unknown',
               };
               if (idx > -1) {
                 updated[idx] = { ...updated[idx], ...newItem };
@@ -190,7 +225,20 @@ export const useUserStore = create<UserState>()(
               );
             }
           } else if (type === 'device_status') {
-            const { battery, status, ip, deviceId } = payload;
+            const {
+              battery,
+              status,
+              ip,
+              deviceId,
+              frontApp,
+              currentTask,
+              runningTime,
+              isLocked,
+              vpnStatus,
+              scriptMemory,
+              isSwitchingAccount
+            } = payload;
+            
             updated = updated.map((d) =>
               d.id === deviceId
                 ? {
@@ -198,6 +246,14 @@ export const useUserStore = create<UserState>()(
                     battery: battery !== undefined ? battery : d.battery,
                     status: status || d.status,
                     ip: ip || d.ip,
+                    frontApp: frontApp !== undefined ? frontApp : d.frontApp,
+                    currentTask: currentTask !== undefined ? currentTask : d.currentTask,
+                    runningTime: runningTime !== undefined ? runningTime : d.runningTime,
+                    isLocked: isLocked !== undefined ? isLocked : d.isLocked,
+                    vpnStatus: vpnStatus !== undefined ? vpnStatus : d.vpnStatus,
+                    scriptMemory: scriptMemory !== undefined ? scriptMemory : d.scriptMemory,
+                    isSwitchingAccount: isSwitchingAccount !== undefined ? isSwitchingAccount : d.isSwitchingAccount,
+                    fetchedAt: Date.now(), // 每次设备上报状态均刷新前端计时起点
                   }
                 : d
             );

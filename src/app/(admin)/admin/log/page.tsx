@@ -17,12 +17,14 @@ interface RegisterCodeOption {
   id: string;
   code: string;
   deviceId: string | null;
+  bindDevices?: any;
   status: string;
 }
 
 export default function LogPage() {
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [codeOptions, setCodeOptions] = useState<RegisterCodeOption[]>([]);
+  const [deviceOptions, setDeviceOptions] = useState<{ value: string; label: string }[]>([]);
   
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
@@ -51,13 +53,31 @@ export default function LogPage() {
     loadCodes();
   }, []);
 
-  // 当选择不同注册码时，如果它绑定了设备，自动填入设备 ID
+  // 当选择不同注册码时，动态计算并填入绑定的物理设备下拉菜单
   const handleCodeSelect = (codeText: string) => {
     setSelectedCode(codeText);
     const matched = codeOptions.find(o => o.code === codeText);
-    if (matched && matched.deviceId) {
-      setSelectedDeviceId(matched.deviceId);
+    if (matched) {
+      let devicesList: any[] = [];
+      try {
+        devicesList = typeof matched.bindDevices === 'string'
+          ? JSON.parse(matched.bindDevices)
+          : (matched.bindDevices || []);
+      } catch (e) {
+        devicesList = [];
+      }
+      const options = devicesList.map((d: any) => ({
+        value: d.deviceId,
+        label: d.name ? `${d.name} (${d.deviceId.slice(0, 8)})` : d.deviceId,
+      }));
+      setDeviceOptions(options);
+      if (options.length > 0) {
+        setSelectedDeviceId(options[0].value);
+      } else {
+        setSelectedDeviceId('');
+      }
     } else {
+      setDeviceOptions([]);
       setSelectedDeviceId('');
     }
   };
@@ -236,12 +256,14 @@ export default function LogPage() {
             
             <div>
               <label className="text-xs font-bold text-slate-400 block mb-1.5">2. 绑定设备ID (长连接对应)</label>
-              <Input
-                placeholder="请填入客户端设备ID..."
-                value={selectedDeviceId}
-                onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="h-9 border-slate-200 dark:border-zinc-800"
-                prefix={<Cpu className="w-4 h-4 text-slate-400" />}
+              <Select
+                showSearch
+                placeholder="请选择绑定设备..."
+                value={selectedDeviceId || undefined}
+                onChange={setSelectedDeviceId}
+                className="w-full h-9"
+                options={deviceOptions}
+                notFoundContent="该授权码暂无任何绑定物理设备"
                 allowClear
               />
             </div>

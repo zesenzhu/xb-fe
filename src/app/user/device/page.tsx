@@ -39,11 +39,11 @@ interface ClientDevice {
 
 export default function UserDeviceListPage() {
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, activeDevices, setDevicesList } = useUserStore();
   const code = user?.username; // 当前登录激活码
 
   const [loading, setLoading] = useState(true);
-  const [devices, setDevices] = useState<ClientDevice[]>([]);
+  const devices = activeDevices as unknown as ClientDevice[];
   const [pingingMap, setPingingMap] = useState<Record<string, boolean>>({});
 
   // 前端秒级计时器，用于动态刷新“已运行时间”
@@ -94,11 +94,16 @@ export default function UserDeviceListPage() {
       const res: any = await api.get('/register-codes/my-devices', {
         params: { code: code.trim().toUpperCase() },
       });
-      setDevices(res || []);
+      // 附加拉取时间戳，供前端运行时间作高精度秒级自增
+      const list = (res || []).map((dev: any) => ({
+        ...dev,
+        fetchedAt: Date.now(),
+      }));
+      setDevicesList(list);
     } catch (err: any) {
       console.error('[Device] 无法获取端侧设备列表:', err);
     } finally {
-      loading && setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -251,7 +256,15 @@ export default function UserDeviceListPage() {
                       <RefreshCw className="w-3.5 h-3.5 mx-auto text-emerald-500" />
                       <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-extrabold uppercase mt-1">已运行时间</p>
                       <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5 font-mono">
-                        {isOnline ? (formatRunningTime(dev.runningTime) || getDurationStr(dev.connectedAt)) : '--'}
+                        {isOnline ? (
+                          (() => {
+                            if (dev.runningTime !== undefined && dev.runningTime !== null && (dev as any).fetchedAt) {
+                              const elapsedSecs = Math.floor((Date.now() - (dev as any).fetchedAt) / 1000);
+                              return formatRunningTime(dev.runningTime + elapsedSecs);
+                            }
+                            return formatRunningTime(dev.runningTime) || getDurationStr(dev.connectedAt);
+                          })()
+                        ) : '--'}
                       </p>
                     </div>
                   </div>
