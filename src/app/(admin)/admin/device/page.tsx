@@ -41,6 +41,7 @@ export default function DevicePage() {
   const [configLoading, setConfigLoading] = useState(false);
   const [configEmail, setConfigEmail] = useState('');
   const [configOffline, setConfigOffline] = useState(true);
+  const [configOfflineTimeout, setConfigOfflineTimeout] = useState(10); // 分钟
   const [configLauncher, setConfigLauncher] = useState(true);
   const [configLocked, setConfigLocked] = useState(false);
   const [configVpn, setConfigVpn] = useState(true);
@@ -165,6 +166,7 @@ export default function DevicePage() {
       setConfigEmail(res.alertEmail || '');
       const cfg = res.alertConfig || {};
       setConfigOffline(cfg.offline !== false);
+      setConfigOfflineTimeout(cfg.offlineTimeout ? Math.round(cfg.offlineTimeout) : 10);
       setConfigLauncher(cfg.launcher !== false);
       setConfigLocked(cfg.locked === true);
       setConfigVpn(cfg.vpn !== false);
@@ -190,6 +192,7 @@ export default function DevicePage() {
         alertEmail: configEmail,
         alertConfig: {
           offline: configOffline,
+          offlineTimeout: configOfflineTimeout,
           launcher: configLauncher,
           locked: configLocked,
           vpn: configVpn,
@@ -830,12 +833,30 @@ export default function DevicePage() {
                 <div className="space-y-3 bg-slate-50 dark:bg-zinc-800/30 p-4 rounded-xl border border-slate-100 dark:border-zinc-800/80">
                   
                   {/* 1. 掉线 */}
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-zinc-200">1. 设备意外离线 (offline_unexpected)</p>
-                      <p className="text-[10px] text-slate-400 dark:text-zinc-500">连续 120 秒未上报心跳且无优雅退出停止信号时触发</p>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-zinc-200">1. 设备意外离线 (offline_unexpected)</p>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                          连续 {configOffline ? configOfflineTimeout : 10} 分钟未上报心跳且无优雅退出停止信号时触发
+                        </p>
+                      </div>
+                      <Switch checked={configOffline} onChange={setConfigOffline} />
                     </div>
-                    <Switch checked={configOffline} onChange={setConfigOffline} />
+                    {configOffline && (
+                      <div className="flex items-center gap-2 pl-4">
+                        <span className="text-[10px] text-slate-400">判定时长:</span>
+                        <InputNumber
+                          min={2}
+                          max={60}
+                          value={configOfflineTimeout}
+                          onChange={(val) => setConfigOfflineTimeout(Number(val) || 10)}
+                          addonAfter="分钟"
+                          size="small"
+                          className="w-28 text-xs font-mono"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* 2. 桌面 */}

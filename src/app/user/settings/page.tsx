@@ -31,6 +31,7 @@ interface AlertConfigResponse {
   alertEmail: string | null;
   alertConfig: {
     offline?: boolean;
+    offlineTimeout?: number;
     launcher?: boolean;
     locked?: boolean;
     vpn?: boolean;
@@ -48,6 +49,7 @@ export default function UserSettingsPage() {
   // 报警配置表单状态
   const [configEmail, setConfigEmail] = useState('');
   const [configOffline, setConfigOffline] = useState(true);
+  const [configOfflineTimeout, setConfigOfflineTimeout] = useState(10); // 分钟
   const [configLauncher, setConfigLauncher] = useState(true);
   const [configLocked, setConfigLocked] = useState(false);
   const [configVpn, setConfigVpn] = useState(true);
@@ -70,6 +72,7 @@ export default function UserSettingsPage() {
         alertEmail: configEmail,
         alertConfig: {
           offline: configOffline,
+          offlineTimeout: configOfflineTimeout,
           launcher: configLauncher,
           locked: configLocked,
           vpn: configVpn,
@@ -128,6 +131,7 @@ export default function UserSettingsPage() {
           setConfigEmail(data.alertEmail || '');
           const cfg = data.alertConfig || {};
           setConfigOffline(cfg.offline !== false);
+          setConfigOfflineTimeout(cfg.offlineTimeout ? Math.round(cfg.offlineTimeout) : 10);
           setConfigLauncher(cfg.launcher !== false);
           setConfigLocked(cfg.locked === true);
           setConfigVpn(cfg.vpn !== false);
@@ -262,20 +266,38 @@ export default function UserSettingsPage() {
               <div className="space-y-3 bg-slate-50/50 dark:bg-zinc-950/20 p-4 rounded-xl border border-slate-100 dark:border-zinc-900/60">
                 
                 {/* 1. 掉线 */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-800 dark:text-zinc-200">1. 设备意外离线 (offline_unexpected)</p>
-                    <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">连续 120 秒未上报心跳且未正常退出时触发警告</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-zinc-200">1. 设备意外离线 (offline_unexpected)</p>
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">
+                        连续 {configOffline ? configOfflineTimeout : 10} 分钟未上报心跳且未正常退出时触发警告
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={configOffline}
+                        onChange={(e) => setConfigOffline(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 dark:bg-zinc-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-700 peer-checked:bg-emerald-500"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={configOffline}
-                      onChange={(e) => setConfigOffline(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-slate-200 dark:bg-zinc-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-700 peer-checked:bg-emerald-500"></div>
-                  </label>
+                  {configOffline && (
+                    <div className="flex items-center gap-2 pl-4 text-[10px] text-slate-500 dark:text-zinc-400">
+                      <span>判定时长 (2 - 60 分钟):</span>
+                      <input
+                        type="number"
+                        min={2}
+                        max={60}
+                        value={configOfflineTimeout}
+                        onChange={(e) => setConfigOfflineTimeout(Math.max(2, Math.min(60, Number(e.target.value) || 10)))}
+                        className="w-16 px-1.5 py-0.5 text-xs text-slate-800 dark:text-zinc-100 bg-slate-50 dark:bg-zinc-950 border border-slate-250 dark:border-zinc-800 rounded text-center font-mono font-bold"
+                      />
+                      <span>分钟</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. 游戏闪退 */}
