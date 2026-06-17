@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import { api } from '@/lib/axios';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface ClientDevice {
   id: string;
@@ -36,7 +37,29 @@ interface ClientDevice {
     message: string;
     timestamp: string;
   } | null;
+  fetchedAt?: number;
 }
+
+interface AccountHistoryItem {
+  id: string;
+  code: string;
+  deviceId: string;
+  account: string;
+  loginTime: string;
+  logoutTime: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const getDiffDurationStr = (start: string | Date, end: string | Date | null) => {
+  const startTime = new Date(start).getTime();
+  const endTime = end ? new Date(end).getTime() : Date.now();
+  const diff = Math.max(0, endTime - startTime);
+  const secs = Math.floor(diff / 1000) % 60;
+  const mins = Math.floor(diff / 60000) % 60;
+  const hours = Math.floor(diff / 3600000);
+  return `${hours}小时 ${mins}分钟 ${secs}秒`;
+};
 
 export default function UserDeviceListPage() {
   const router = useRouter();
@@ -46,6 +69,28 @@ export default function UserDeviceListPage() {
   const [loading, setLoading] = useState(true);
   const devices = activeDevices as unknown as ClientDevice[];
   const [pingingMap, setPingingMap] = useState<Record<string, boolean>>({});
+
+  // 警报消除过滤状态 - 使用初始化函数直接从 LocalStorage 读取，避免在 Effect 中同步 setState
+  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dismissed_alerts');
+      if (saved) {
+        try {
+          return JSON.parse(saved) as Record<string, string>;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return {};
+  });
+
+  // 账号流转历史状态
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyDevicesName, setHistoryDevicesName] = useState('');
+  const [historyList, setHistoryList] = useState<AccountHistoryItem[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
 
   // 前端秒级计时器，用于动态刷新“已运行时间”
   const [now, setNow] = useState<Date>(new Date());
@@ -92,16 +137,17 @@ export default function UserDeviceListPage() {
   const fetchDevices = async () => {
     if (!code) return;
     try {
-      const res: any = await api.get('/register-codes/my-devices', {
+      const res = await api.get<unknown>('/register-codes/my-devices', {
         params: { code: code.trim().toUpperCase() },
       });
+      const data = (res as unknown) as ClientDevice[];
       // 附加拉取时间戳，供前端运行时间作高精度秒级自增
-      const list = (res || []).map((dev: any) => ({
+      const list = (data || []).map((dev) => ({
         ...dev,
         fetchedAt: Date.now(),
       }));
       setDevicesList(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Device] 无法获取端侧设备列表:', err);
     } finally {
       setLoading(false);
@@ -116,8 +162,9 @@ export default function UserDeviceListPage() {
       await api.patch('/register-codes/my-devices/unbind', { code: code.trim().toUpperCase(), deviceId, operator: 'user' });
       toast.success(`设备 [ ${deviceName} ] 解绑指令下发成功，已强制踢线下线`);
       fetchDevices();
-    } catch (err: any) {
-      toast.error(err.message || '解绑设备失败');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '解绑设备失败';
+      toast.error(errMsg);
     }
   };
 
@@ -130,6 +177,39 @@ export default function UserDeviceListPage() {
       toast.error(`设备 [ ${name} ] 探测无回应，请检查物理链路`);
     } finally {
       setPingingMap((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  // 警报消除处理函数
+  const handleDismissAlert = (deviceId: string, timestamp: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = { ...dismissedAlerts, [deviceId]: timestamp };
+    setDismissedAlerts(updated);
+    localStorage.setItem('dismissed_alerts', JSON.stringify(updated));
+    toast.success('该脚本警报已在本地清除/忽略');
+  };
+
+  // 账号历史时间线拉取与显示
+  const handleShowAccountHistory = async (deviceId: string, deviceName: string) => {
+    if (!code) return;
+    setSelectedDeviceId(deviceId);
+    setHistoryDevicesName(deviceName);
+    setHistoryModalOpen(true);
+    setHistoryLoading(true);
+    setHistoryList([]);
+    try {
+      const res = await api.get<AccountHistoryItem[]>('/register-codes/my-devices/account-history', {
+        params: {
+          code: code.trim().toUpperCase(),
+          deviceId,
+        },
+      });
+      setHistoryList(res || []);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '获取账号流转历史失败';
+      toast.error(errMsg);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -189,6 +269,10 @@ export default function UserDeviceListPage() {
             const isSwitching = isOnline && (dev.isSwitchingAccount === 1 || dev.isSwitchingAccount === true);
             const isAtDesktop = isOnline && !isSwitching && (dev.frontApp?.toLowerCase().includes('launcher') || dev.frontApp?.toLowerCase().includes('desktop') || dev.frontApp === 'unknown');
 
+            // 异常警报本地过滤判断
+            const dismissedTime = dismissedAlerts[dev.id];
+            const hasNewAlert = dev.lastError && (!dismissedTime || new Date(dev.lastError.timestamp).getTime() > new Date(dismissedTime).getTime());
+
             return (
               <Card key={dev.id} className={cn("border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 backdrop-blur shadow-sm dark:shadow-2xl relative overflow-hidden transition-all duration-300 hover:border-slate-350 dark:hover:border-zinc-700",
                 isLocked ? "border-amber-400 dark:border-amber-700/80" : isAtDesktop ? "border-rose-400 dark:border-rose-700/80" : isSwitching ? "border-blue-400 dark:border-blue-700" : ""
@@ -219,7 +303,7 @@ export default function UserDeviceListPage() {
 
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-950 flex items-center justify-center border border-slate-200 dark:border-zinc-850 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-950 flex items-center justify-center border border-slate-200/40 dark:border-zinc-850 shadow-sm">
                       <Cpu className={cn("w-5 h-5", isOnline ? (isSwitching ? 'text-blue-500' : 'text-emerald-500 dark:text-emerald-400') : 'text-slate-400 dark:text-zinc-500')} />
                     </div>
                     <div>
@@ -275,26 +359,35 @@ export default function UserDeviceListPage() {
                     <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none">
                       <ListTodo className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
                       <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">当前任务:</span>
-                      <span className="truncate flex-1 font-bold text-slate-700 dark:text-zinc-200" title={dev.currentTask}>
+                      <span className="truncate flex-1 font-bold text-slate-770 dark:text-zinc-200" title={dev.currentTask}>
                         {dev.currentTask}
                       </span>
                     </div>
                   )}
 
-                  {/* 当前运行的账号 */}
-                  {isOnline && dev.currentAccount && (
-                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none mt-2">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-                      <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">当前账号:</span>
+                  {/* 当前/上次运行的账号 */}
+                  {dev.currentAccount && (
+                    <div 
+                      onClick={() => handleShowAccountHistory(dev.id, dev.name)}
+                      className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none mt-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-900/60 transition-all duration-200 border-dashed hover:border-solid hover:border-blue-400/50 group"
+                      title="点击查看2天内账号登录/退出流转历史"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">
+                        {isOnline ? '当前账号:' : '上次账号:'}
+                      </span>
                       <span className="truncate flex-1 font-bold text-slate-750 dark:text-zinc-200" title={dev.currentAccount}>
                         {dev.currentAccount}
+                      </span>
+                      <span className="text-[10px] text-blue-500 dark:text-blue-400 font-bold shrink-0 opacity-80 group-hover:opacity-100 flex items-center gap-0.5">
+                        历史 ➜
                       </span>
                     </div>
                   )}
 
                   {/* 崩溃与脚本异常警报区域 */}
-                  {dev.lastError && (
-                    <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl text-[11px] text-rose-700 dark:text-rose-400 space-y-1 select-none">
+                  {hasNewAlert && dev.lastError && (
+                    <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl text-[11px] text-rose-700 dark:text-rose-455 space-y-1 select-none">
                       <div className="flex items-center gap-1 font-bold">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-500 animate-bounce" />
                         <span>最近脚本异常警报:</span>
@@ -312,14 +405,24 @@ export default function UserDeviceListPage() {
                       </p>
                       <div className="text-[9px] text-rose-500/70 dark:text-rose-450 flex justify-between items-center pt-0.5">
                         <span>发生时间: {new Date(dev.lastError.timestamp).toLocaleString()}</span>
-                        <button
-                          onClick={() => {
-                            window.alert(`【脚本崩溃调用栈详情】\n\n报错时间：${new Date(dev.lastError!.timestamp).toLocaleString()}\n\n上报原文：\n${dev.lastError!.message}`);
-                          }}
-                          className="underline hover:text-rose-900 dark:hover:text-rose-200 font-extrabold cursor-pointer"
-                        >
-                          查看堆栈
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.alert(`【脚本崩溃调用栈详情】\n\n报错时间：${new Date(dev.lastError!.timestamp).toLocaleString()}\n\n上报原文：\n${dev.lastError!.message}`);
+                            }}
+                            className="underline hover:text-rose-900 dark:hover:text-rose-200 font-extrabold cursor-pointer"
+                          >
+                            查看堆栈
+                          </button>
+                          <span className="text-rose-300/30">|</span>
+                          <button
+                            onClick={(e) => handleDismissAlert(dev.id, dev.lastError!.timestamp, e)}
+                            className="underline hover:text-rose-900 dark:hover:text-rose-200 font-extrabold cursor-pointer"
+                          >
+                            忽略警报
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -360,7 +463,7 @@ export default function UserDeviceListPage() {
                   <Button
                     onClick={() => handleUnbind(dev.id, dev.name)}
                     variant="outline"
-                    className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 text-[10px] font-bold h-8 px-3 rounded-xl border border-rose-200/50 dark:border-rose-900/40 flex items-center gap-1.5 transition-all active:scale-97 cursor-pointer"
+                    className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-450 text-[10px] font-bold h-8 px-3 rounded-xl border border-rose-200/50 dark:border-rose-900/40 flex items-center gap-1.5 transition-all active:scale-97 cursor-pointer"
                   >
                     <Unlock className="w-3 h-3" />
                     解绑
@@ -395,6 +498,108 @@ export default function UserDeviceListPage() {
           })}
         </div>
       )}
+
+      {/* 账号历史流转模态框 */}
+      <Dialog open={historyModalOpen} onOpenChange={setHistoryModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850 rounded-2xl shadow-xl p-6 overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
+              <span>账号历史流转审计</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400 dark:text-zinc-500 mt-1">
+              设备 <span className="font-bold text-slate-700 dark:text-zinc-350">{historyDevicesName}</span> 最近 2 天内登录过的账号记录。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4 max-h-[320px] overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+            {historyLoading ? (
+              <div className="py-10 text-center space-y-3">
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                <p className="text-xs text-slate-450 dark:text-zinc-500 animate-pulse">正在获取流转日志...</p>
+              </div>
+            ) : historyList.length === 0 ? (
+              <div className="py-12 text-center text-slate-455 dark:text-zinc-550 border border-dashed border-slate-200 dark:border-zinc-850 rounded-xl bg-slate-50/50 dark:bg-zinc-950/20">
+                <ShieldCheck className="w-8 h-8 opacity-25 mx-auto mb-2" />
+                <p className="text-xs">暂无 2 天内的账号变更记录</p>
+                <p className="text-[10px] text-slate-400 dark:text-zinc-650 mt-1">每次切换登录新账号时，系统会自动记录</p>
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-slate-100 dark:border-zinc-800 ml-3 pl-4 space-y-6">
+                {historyList.map((item) => {
+                  const isCurrentActive = !item.logoutTime && devices.find(d => d.id === selectedDeviceId)?.status === 'online';
+                  const duration = getDiffDurationStr(item.loginTime, item.logoutTime);
+                  
+                  return (
+                    <div key={item.id} className="relative">
+                      {/* 时间轴小圆点 */}
+                      <span className={cn(
+                        "absolute left-[-23px] top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border bg-white dark:bg-zinc-950 shadow-sm",
+                        isCurrentActive ? "border-emerald-500 ring-2 ring-emerald-500/25" : "border-slate-300 dark:border-zinc-750"
+                      )}>
+                        <span className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          isCurrentActive ? "bg-emerald-500 animate-ping" : "bg-slate-400 dark:bg-zinc-650"
+                        )} />
+                      </span>
+
+                      <div className="space-y-1 bg-slate-50/50 dark:bg-zinc-900/35 p-3 rounded-xl border border-slate-100 dark:border-zinc-900/50 hover:border-slate-200 dark:hover:border-zinc-800 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <span className="font-mono font-bold text-slate-800 dark:text-white text-xs bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                            👤 {item.account}
+                          </span>
+                          {isCurrentActive ? (
+                            <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-black tracking-widest animate-pulse border border-emerald-500/20">
+                              当前在线中
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-bold">
+                              已退出
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-1 text-[11px] text-slate-500 dark:text-zinc-450 pt-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400">登入:</span>
+                            <span className="font-mono text-slate-700 dark:text-zinc-300">
+                              {new Date(item.loginTime).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400">登出:</span>
+                            <span className="font-mono text-slate-700 dark:text-zinc-300">
+                              {item.logoutTime ? new Date(item.logoutTime).toLocaleString() : <span className="text-emerald-500 dark:text-emerald-400 font-semibold flex items-center gap-1">-- <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping inline-block" /></span>}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-dashed border-slate-200/50 dark:border-zinc-800/50 mt-1">
+                            <span className="text-slate-400 font-semibold">运行累计时长:</span>
+                            <span className={cn(
+                              "font-bold font-mono px-1.5 py-0.5 rounded",
+                              isCurrentActive ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5" : "text-slate-600 dark:text-zinc-350 bg-slate-100 dark:bg-zinc-800/40"
+                            )}>
+                              {duration}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={() => setHistoryModalOpen(false)}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-white text-xs font-bold px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 active:scale-97 cursor-pointer"
+            >
+              关闭
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
