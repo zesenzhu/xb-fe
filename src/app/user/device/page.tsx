@@ -198,13 +198,14 @@ export default function UserDeviceListPage() {
     setHistoryLoading(true);
     setHistoryList([]);
     try {
-      const res = await api.get<AccountHistoryItem[]>('/register-codes/my-devices/account-history', {
+      const res = await api.get<unknown>('/register-codes/my-devices/account-history', {
         params: {
           code: code.trim().toUpperCase(),
           deviceId,
         },
       });
-      setHistoryList(res || []);
+      const data = (res as unknown) as AccountHistoryItem[];
+      setHistoryList(data || []);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : '获取账号流转历史失败';
       toast.error(errMsg);
