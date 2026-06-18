@@ -4,7 +4,7 @@ import React from 'react';
 import { Table, Button, Input, Select, Tag, Tooltip, message } from 'antd';
 import { useTableQuery } from '@/hooks/useTableQuery';
 import { api } from '@/lib/axios';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, copyToClipboard } from '@/lib/utils';
 import './style.scss';
 
 export default function LogTab() {
@@ -49,7 +49,7 @@ export default function LogTab() {
           <span 
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(text);
+                await copyToClipboard(text);
                 message.success('卡密已成功复制！');
               } catch {
                 message.error('复制失败，请手动选择复制');

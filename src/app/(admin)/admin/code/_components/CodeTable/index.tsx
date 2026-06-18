@@ -5,7 +5,7 @@ import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge } fro
 import { Cpu, Clock, RefreshCw, ShieldAlert } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
 import { api } from '@/lib/axios';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, copyToClipboard } from '@/lib/utils';
 import { LicenseCode } from '../types';
 import './style.scss';
 
@@ -123,7 +123,7 @@ export default function CodeTable({
           <span 
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(text);
+                await copyToClipboard(text);
                 message.success('卡密已成功复制！');
               } catch {
                 message.error('复制失败，请手动选择复制');

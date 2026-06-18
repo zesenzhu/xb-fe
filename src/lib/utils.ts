@@ -22,7 +22,7 @@ export function formatDateTime(dateStr: string | null | undefined, includeSecond
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
     return `${year}-${month}-${day} ${hours}:${minutes}`;
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 }
@@ -36,3 +36,37 @@ export function getFileUrl(path?: string) {
   const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
   return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }
+
+export async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to legacy method if clipboard.writeText fails
+    }
+  }
+
+  // Fallback for non-secure HTTP contexts
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    if (!successful) {
+      throw new Error("Fallback copy failed");
+    }
+  } catch (err) {
+    document.body.removeChild(textArea);
+    throw err;
+  }
+}
+
