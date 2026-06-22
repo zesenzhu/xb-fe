@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { KeyRound, User, Loader2 } from 'lucide-react';
 import { api } from '@/lib/axios';
+import FooterICP from '@/components/layout/FooterICP';
 
 // 使用 Zod 定义前端严格的表单校验架构
 const loginSchema = z.object({
@@ -136,8 +137,8 @@ export function LoginForm() {
           <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg border border-slate-700/50">
             <span className="text-slate-950 font-black text-2xl">宝</span>
           </div>
-          <h1 className="text-2xl font-black tracking-widest text-white">小宝修仙</h1>
-          <p className="text-xs text-slate-400 font-medium">小宝修仙智能后台管理系统</p>
+          <h1 className="text-2xl font-black tracking-widest text-white">小宝JS</h1>
+          <p className="text-xs text-slate-400 font-medium">小宝JS智能后台管理系统</p>
         </div>
 
         {/* 磨砂玻璃拟物登录卡片 */}
@@ -212,6 +213,11 @@ export function LoginForm() {
             </form>
           </CardContent>
         </Card>
+      </div>
+
+      {/* 底部 ICP 备案号 */}
+      <div className="absolute bottom-0 left-0 w-full z-20">
+        <FooterICP />
       </div>
     </div>
   );

@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/axios';
 import HeaderNotification from './_components/HeaderNotification';
+import FooterICP from '@/components/layout/FooterICP';
 
 interface MenuItem {
   name: string;
@@ -420,12 +421,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* 3. 子页面渲染主体 */}
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto flex flex-col">
           <div className={cn(
-            "w-full animate-in fade-in duration-300",
+            "w-full animate-in fade-in duration-300 flex-1",
             !showSidebar && "max-w-6xl mx-auto px-2 md:px-4"
           )}>
             {children}
+          </div>
+          <div className="mt-auto pt-4">
+            <FooterICP />
           </div>
         </main>
       </div>

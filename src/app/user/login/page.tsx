@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { KeyRound, ShieldAlert, Loader2, Sparkles, User } from 'lucide-react';
 import { api } from '@/lib/axios';
+import FooterICP from '@/components/layout/FooterICP';
 
 // 使用 Zod 校验两种登录模式的表单架构
 const licenseLoginSchema = z.object({
@@ -76,7 +77,7 @@ function UserLoginForm() {
           <div className="w-11 h-11 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <Sparkles className="w-5 h-5 text-zinc-950 shrink-0" />
           </div>
-          <h1 className="text-xl font-black tracking-widest text-white">小宝修仙</h1>
+          <h1 className="text-xl font-black tracking-widest text-white">小宝JS</h1>
           <p className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-wide">面向用户端设备与日志控制面板</p>
         </div>
 
@@ -126,6 +127,11 @@ function UserLoginForm() {
 
           </CardContent>
         </Card>
+      </div>
+
+      {/* 底部 ICP 备案号 */}
+      <div className="absolute bottom-0 left-0 w-full z-20">
+        <FooterICP />
       </div>
     </div>
   );

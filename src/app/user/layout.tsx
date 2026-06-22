@@ -24,6 +24,7 @@ import { disconnectSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/axios';
+import FooterICP from '@/components/layout/FooterICP';
 
 interface NavItem {
   name: string;
@@ -375,8 +376,13 @@ export default function UserPortalLayout({ children }: { children: React.ReactNo
       </nav>
 
       {/* 核心页面渲染区域 */}
-      <main className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-7xl w-full mx-auto animate-in fade-in duration-300">
-        {children}
+      <main className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-7xl w-full mx-auto animate-in fade-in duration-300 flex flex-col">
+        <div className="flex-1">
+          {children}
+        </div>
+        <div className="mt-auto pt-4">
+          <FooterICP />
+        </div>
       </main>
     </div>
   );
