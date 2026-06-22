@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Input, Button, Select, DatePicker, Modal, message } from 'antd';
-import { Upload, Plus, ShieldAlert } from 'lucide-react';
+import { Upload, Plus, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
 import { api } from '@/lib/axios';
 import './style.scss';
@@ -32,6 +32,7 @@ export default function CodeFilter({
   onOpenImport,
   onOpenGenerate,
 }: CodeFilterProps) {
+  const [expanded, setExpanded] = useState(false);
 
   // 批量修改启用状态
   const handleBatchStatusChange = async (status: 'active' | 'disabled') => {
@@ -96,80 +97,84 @@ export default function CodeFilter({
           allowClear
         />
 
-        <Select
-          className="h-9 rounded-lg w-[140px]"
-          placeholder="所属应用 (全部)"
-          value={filters.appName || undefined}
-          onChange={(val) => onFilterChange('appName', val)}
-          allowClear
-          options={[
-            { value: 'general', label: '通用型卡密' },
-            { value: '老系统导入', label: '老系统卡密' },
-          ]}
-          dropdownStyle={{ borderRadius: '8px' }}
-        />
+        {expanded && (
+          <>
+            <Select
+              className="h-9 rounded-lg w-[140px]"
+              placeholder="所属应用 (全部)"
+              value={filters.appName || undefined}
+              onChange={(val) => onFilterChange('appName', val)}
+              allowClear
+              options={[
+                { value: 'general', label: '通用型卡密' },
+                { value: '老系统导入', label: '老系统卡密' },
+              ]}
+              dropdownStyle={{ borderRadius: '8px' }}
+            />
 
-        <Select
-          className="h-9 rounded-lg w-[110px]"
-          placeholder="卡种 (全部)"
-          value={filters.cardType || undefined}
-          onChange={(val) => onFilterChange('cardType', val)}
-          allowClear
-          options={[
-            { value: 'SK', label: '时卡' },
-            { value: 'TK', label: '天卡' },
-            { value: 'WK', label: '周卡' },
-            { value: 'YK', label: '月卡' },
-            { value: 'NK', label: '年卡' },
-            { value: 'YJ', label: '永久卡' },
-          ]}
-        />
+            <Select
+              className="h-9 rounded-lg w-[110px]"
+              placeholder="卡种 (全部)"
+              value={filters.cardType || undefined}
+              onChange={(val) => onFilterChange('cardType', val)}
+              allowClear
+              options={[
+                { value: 'SK', label: '时卡' },
+                { value: 'TK', label: '天卡' },
+                { value: 'WK', label: '周卡' },
+                { value: 'YK', label: '月卡' },
+                { value: 'NK', label: '年卡' },
+                { value: 'YJ', label: '永久卡' },
+              ]}
+            />
 
-        <Select
-          className="h-9 rounded-lg w-[110px]"
-          placeholder="状态 (全部)"
-          value={filters.status || undefined}
-          onChange={(val) => onFilterChange('status', val)}
-          allowClear
-          options={[
-            { value: 'unused', label: '未激活' },
-            { value: 'active', label: '使用中' },
-            { value: 'full', label: '已满载' },
-            { value: 'expired', label: '已过期' },
-            { value: 'disabled', label: '已禁用' },
-          ]}
-        />
+            <Select
+              className="h-9 rounded-lg w-[110px]"
+              placeholder="状态 (全部)"
+              value={filters.status || undefined}
+              onChange={(val) => onFilterChange('status', val)}
+              allowClear
+              options={[
+                { value: 'unused', label: '未激活' },
+                { value: 'active', label: '使用中' },
+                { value: 'full', label: '已满载' },
+                { value: 'expired', label: '已过期' },
+                { value: 'disabled', label: '已禁用' },
+              ]}
+            />
 
-        <Select
-          className="h-9 rounded-lg w-[120px]"
-          placeholder="来源 (全部)"
-          value={filters.source || undefined}
-          onChange={(val) => onFilterChange('source', val)}
-          allowClear
-          options={[
-            { value: 'CREATE', label: '自建激活码' },
-            { value: 'IMPORT', label: '导入激活码' },
-          ]}
-        />
+            <Select
+              className="h-9 rounded-lg w-[120px]"
+              placeholder="来源 (全部)"
+              value={filters.source || undefined}
+              onChange={(val) => onFilterChange('source', val)}
+              allowClear
+              options={[
+                { value: 'CREATE', label: '自建激活码' },
+                { value: 'IMPORT', label: '导入激活码' },
+              ]}
+            />
 
-        <Select
-          className="h-9 rounded-lg w-[110px]"
-          placeholder="服务 (全部)"
-          value={filters.isEnabled || undefined}
-          onChange={(val) => onFilterChange('isEnabled', val)}
-          allowClear
-          options={[
-            { value: 'true', label: '启用中' },
-            { value: 'false', label: '已禁用' },
-          ]}
-        />
+            <Select
+              className="h-9 rounded-lg w-[110px]"
+              placeholder="服务 (全部)"
+              value={filters.isEnabled || undefined}
+              onChange={(val) => onFilterChange('isEnabled', val)}
+              allowClear
+              options={[
+                { value: 'true', label: '启用中' },
+                { value: 'false', label: '已禁用' },
+              ]}
+            />
 
-        <DatePicker.RangePicker
-          className="h-9 border-slate-200 dark:border-zinc-800 rounded-lg w-[220px]"
-          value={filters.expireRange || null}
-          onChange={(val) => onFilterChange('expireRange', val)}
-          placeholder={['到期开始', '到期结束']}
-        />
+            <DatePicker.RangePicker
+              className="h-9 border-slate-200 dark:border-zinc-800 rounded-lg w-[220px]"
+              value={filters.expireRange || null}
+              onChange={(val) => onFilterChange('expireRange', val)}
+              placeholder={['到期开始', '到期结束']}
+            />
+          </>
+        )}
 
         {/* 检索操作按钮跟条件排在一起 */}
         <div className="flex flex-wrap items-center gap-2 ml-auto pb-px">
@@ -268,6 +273,17 @@ export default function CodeFilter({
           <div className="w-px h-4 bg-slate-200 dark:bg-zinc-850 mx-1" />
 
           {/* 查询与重置 */}
+          <Button 
+            type="link"
+            onClick={() => setExpanded(!expanded)} 
+            className="text-xs h-9 px-2 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            {expanded ? (
+              <span className="flex items-center"><ChevronUp className="w-3.5 h-3.5 mr-1" />收起</span>
+            ) : (
+              <span className="flex items-center"><ChevronDown className="w-3.5 h-3.5 mr-1" />展开筛选</span>
+            )}
+          </Button>
           <Button 
             onClick={onReset} 
             className="text-xs h-9 border-slate-200 dark:border-zinc-800 dark:bg-zinc-900 rounded-lg px-3 font-semibold cursor-pointer"

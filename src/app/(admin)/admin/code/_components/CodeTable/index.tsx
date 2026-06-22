@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge } from 'antd';
+import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge, Popover } from 'antd';
 import { Cpu, Clock, RefreshCw, ShieldAlert } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
 import { api } from '@/lib/axios';
@@ -176,22 +176,39 @@ export default function CodeTable({
       width: 180,
       render: (deviceIds: string[] | null, record: LicenseCode) => {
         const ids = deviceIds || (record.deviceId ? [record.deviceId] : []);
-        return ids.length > 0 ? (
+        if (ids.length === 0) return <span className="text-slate-400 italic text-xs">暂无绑定</span>;
+        
+        const firstId = ids[0];
+        const restIds = ids.slice(1);
+        
+        const renderDeviceTag = (dev: string) => (
+          <Tooltip key={dev} title="点击查看设备运行状态与最新日志">
+            <span 
+              onClick={() => onDeviceClick?.(dev, record.code)}
+              className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.97] transition-all"
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              {dev}
+            </span>
+          </Tooltip>
+        );
+
+        return (
           <Space size={[0, 6]} wrap className="max-w-[220px] py-1 select-none">
-            {ids.map((dev) => (
-              <Tooltip key={dev} title="点击查看设备运行状态与最新日志">
-                <span 
-                  onClick={() => onDeviceClick?.(dev, record.code)}
-                  className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.97] transition-all"
-                >
-                  <Cpu className="w-3.5 h-3.5" />
-                  {dev}
+            {renderDeviceTag(firstId)}
+            {restIds.length > 0 && (
+              <Popover 
+                content={<Space direction="vertical" size={4}>{restIds.map(renderDeviceTag)}</Space>} 
+                title={<span className="text-xs font-bold text-slate-600 dark:text-slate-300">其他绑定设备</span>}
+                trigger="click"
+                placement="bottom"
+              >
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 font-bold bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700 cursor-pointer hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                  + {restIds.length} 台
                 </span>
-              </Tooltip>
-            ))}
+              </Popover>
+            )}
           </Space>
-        ) : (
-          <span className="text-slate-400 italic text-xs">暂无绑定</span>
         );
       }
     },
