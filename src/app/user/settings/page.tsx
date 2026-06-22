@@ -37,6 +37,8 @@ interface AlertConfigResponse {
     vpn?: boolean;
     errorLog?: boolean;
     memoryLimit?: number;
+    preventDuplicateAccount?: boolean;
+    duplicateAction?: 'kick_new' | 'kick_old';
   } | null;
 }
 
@@ -56,6 +58,10 @@ export default function UserSettingsPage() {
   const [configErrorLog, setConfigErrorLog] = useState(true);
   const [configMemoryLimit, setConfigMemoryLimit] = useState(150); // MB
   const [configSaving, setConfigSaving] = useState(false);
+
+  // 【新增】防多开防共享配置状态
+  const [configPreventDuplicate, setConfigPreventDuplicate] = useState(false);
+  const [configDuplicateAction, setConfigDuplicateAction] = useState<'kick_new' | 'kick_old'>('kick_new');
 
   // 历史记录与黑名单状态
   const [historyList, setHistoryList] = useState<AuditHistory[]>([]);
@@ -78,6 +84,8 @@ export default function UserSettingsPage() {
           vpn: configVpn,
           errorLog: configErrorLog,
           memoryLimit: configMemoryLimit * 1024, // 存为 KB
+          preventDuplicateAccount: configPreventDuplicate,
+          duplicateAction: configDuplicateAction,
         }
       };
       await api.patch('/register-codes/my-alert', payload);
@@ -137,6 +145,8 @@ export default function UserSettingsPage() {
           setConfigVpn(cfg.vpn !== false);
           setConfigErrorLog(cfg.errorLog !== false);
           setConfigMemoryLimit(cfg.memoryLimit ? Math.round(cfg.memoryLimit / 1024) : 150);
+          setConfigPreventDuplicate(cfg.preventDuplicateAccount === true);
+          setConfigDuplicateAction(cfg.duplicateAction || 'kick_new');
         })
         .catch((err) => {
           console.error('获取配置失败:', err);
@@ -386,6 +396,54 @@ export default function UserSettingsPage() {
                     />
                     <span className="text-[10px] text-slate-400">MB</span>
                   </div>
+                </div>
+
+                {/* 7. 同卡密多设备防账号共享 */}
+                <div className="flex flex-col gap-2 border-t border-slate-100/60 dark:border-zinc-850/40 pt-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-zinc-200">7. 同卡密多设备防账号共享 (preventDuplicateAccount)</p>
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">当多台设备同时登录相同账号时，自动触发防御下线并引导换号</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={configPreventDuplicate}
+                        onChange={(e) => setConfigPreventDuplicate(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 dark:bg-zinc-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-700 peer-checked:bg-emerald-500"></div>
+                    </label>
+                  </div>
+                  {configPreventDuplicate && (
+                    <div className="flex items-center gap-4 pl-4 text-[10px] text-slate-500 dark:text-zinc-400">
+                      <span>冲突时执行的动作:</span>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="duplicateAction"
+                            value="kick_new"
+                            checked={configDuplicateAction === 'kick_new'}
+                            onChange={() => setConfigDuplicateAction('kick_new')}
+                            className="text-emerald-500 focus:ring-emerald-500"
+                          />
+                          <span>防御踢新 (更安全)</span>
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="duplicateAction"
+                            value="kick_old"
+                            checked={configDuplicateAction === 'kick_old'}
+                            onChange={() => setConfigDuplicateAction('kick_old')}
+                            className="text-emerald-500 focus:ring-emerald-500"
+                          />
+                          <span>抢占踢老</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </div>

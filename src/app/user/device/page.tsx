@@ -214,6 +214,29 @@ export default function UserDeviceListPage() {
     }
   };
 
+  // 手动下发切号换号指令
+  const handleSwitchAccount = async (deviceId: string, deviceName: string) => {
+    if (!code) return;
+    const confirm = window.confirm(
+      `确定要对设备 [ ${deviceName} ] 正在运行的账号下发“强制切号”指令吗？\n` +
+      `下发后脚本将自动安全退登并尝试切换至账号池中的下一个账号。`
+    );
+    if (!confirm) return;
+    try {
+      await api.patch('/register-codes/my-devices/switch-account', {
+        code: code.trim().toUpperCase(),
+        deviceId,
+        operator: 'user',
+        reason: '用户在网页端手动执行强制换号',
+      });
+      toast.success(`切号指令已成功下发至设备 [ ${deviceName} ]`);
+      fetchDevices();
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '切号指令下发失败';
+      toast.error(errMsg);
+    }
+  };
+
   useEffect(() => {
     fetchDevices();
     const timer = setInterval(fetchDevices, 15000);
@@ -369,20 +392,35 @@ export default function UserDeviceListPage() {
                   {/* 当前/上次运行的账号 */}
                   {dev.currentAccount && (
                     <div 
-                      onClick={() => handleShowAccountHistory(dev.id, dev.name)}
-                      className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none mt-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-900/60 transition-all duration-200 border-dashed hover:border-solid hover:border-blue-400/50 group"
-                      title="点击查看2天内账号登录/退出流转历史"
+                      className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-950/45 border border-slate-200/40 dark:border-zinc-850/60 p-2 rounded-xl text-[11px] font-medium text-slate-600 dark:text-zinc-350 select-none mt-2 border-dashed"
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
                       <span className="text-slate-400 dark:text-zinc-500 font-semibold text-[10px] uppercase">
                         {isOnline ? '当前账号:' : '上次账号:'}
                       </span>
                       <span className="truncate flex-1 font-bold text-slate-750 dark:text-zinc-200" title={dev.currentAccount}>
                         {dev.currentAccount}
                       </span>
-                      <span className="text-[10px] text-blue-500 dark:text-blue-400 font-bold shrink-0 opacity-80 group-hover:opacity-100 flex items-center gap-0.5">
-                        历史 ➜
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isOnline && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSwitchAccount(dev.id, dev.name);
+                            }}
+                            className="text-[9px] text-amber-500 hover:text-amber-600 font-extrabold hover:scale-105 active:scale-95 transition-all flex items-center gap-0.5 cursor-pointer px-1.5 py-0.5 bg-amber-500/10 rounded border border-amber-500/20"
+                            title="向脚本下发强制退登换号命令"
+                          >
+                            切号 🔄
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleShowAccountHistory(dev.id, dev.name)}
+                          className="text-[10px] text-blue-500 dark:text-blue-400 font-bold hover:scale-105 active:scale-95 transition-all flex items-center gap-0.5 cursor-pointer"
+                        >
+                          历史 ➜
+                        </button>
+                      </div>
                     </div>
                   )}
 
