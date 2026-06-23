@@ -6,6 +6,7 @@ import { Bell, AlertCircle, AlertTriangle, Info, Check, CheckCircle2 } from 'luc
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/axios';
+import { useUserStore } from '@/store/useUserStore';
 
 interface SystemNotification {
   id: string;
@@ -73,7 +74,9 @@ export default function HeaderNotification() {
     fetchNotificationStats();
 
     // 建立持久 SSE 连接
-    const eventSource = new EventSource('/api/notifications/stream');
+    const token = useUserStore.getState().adminAccessToken;
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
+    const eventSource = new EventSource(`${baseURL}/notifications/stream?token=${token}`);
 
     eventSource.onmessage = (event) => {
       try {
