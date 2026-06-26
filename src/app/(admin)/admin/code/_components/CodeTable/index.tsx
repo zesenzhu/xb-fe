@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge, Popover } from 'antd';
-import { Cpu, Clock, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge, Popover, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
+import { Cpu, Clock, RefreshCw, ShieldAlert, Settings, MoreHorizontal } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
 import { api } from '@/lib/axios';
 import { formatDateTime, copyToClipboard } from '@/lib/utils';
@@ -14,6 +15,7 @@ export interface CodeTableProps {
   selectedRowKeys: React.Key[];
   onSelectionChange: (keys: React.Key[]) => void;
   onAdjustClick: (record: LicenseCode) => void;
+  onConfigClick: (record: LicenseCode) => void;
   onSuccess: () => void;
   onDeviceClick?: (deviceId: string, code: string) => void;
 }
@@ -23,6 +25,7 @@ export default function CodeTable({
   selectedRowKeys,
   onSelectionChange,
   onAdjustClick,
+  onConfigClick,
   onSuccess,
   onDeviceClick,
 }: CodeTableProps) {
@@ -259,44 +262,69 @@ export default function CodeTable({
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 120,
       fixed: 'right' as const,
-      render: (_: any, record: LicenseCode) => (
-        <Space size="middle">
-          <Button
-            type="link"
-            size="small"
-            className="p-0 text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 font-bold"
-            onClick={() => onAdjustClick(record)}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            微调
-          </Button>
+      render: (_: any, record: LicenseCode) => {
+        const items: MenuProps['items'] = [
+          {
+            key: 'adjust',
+            label: (
+              <span className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-zinc-350">
+                <Clock className="w-3.5 h-3.5" />
+                微调时长
+              </span>
+            ),
+            onClick: () => onAdjustClick(record),
+          },
+          record.currentActivations > 0 ? {
+            key: 'unbind',
+            label: (
+              <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <RefreshCw className="w-3.5 h-3.5" />
+                强制解绑
+              </span>
+            ),
+            onClick: () => handleUnbind(record),
+          } : null,
+          {
+            type: 'divider',
+          },
+          {
+            key: 'revoke',
+            label: (
+              <span className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-semibold">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                注销销毁
+              </span>
+            ),
+            onClick: () => handleRevoke(record.id, record.code),
+          },
+        ].filter(Boolean) as MenuProps['items'];
 
-          {record.currentActivations > 0 && (
+        return (
+          <Space size="middle">
             <Button
               type="link"
               size="small"
-              className="p-0 text-amber-600 hover:text-amber-700 font-bold"
-              onClick={() => handleUnbind(record)}
+              className="p-0 text-indigo-600 hover:text-indigo-750 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 font-bold"
+              onClick={() => onConfigClick(record)}
             >
-              解绑
+              <Settings className="w-3.5 h-3.5" />
+              授权
             </Button>
-          )}
 
-          <PermissionGuard permission="code:delete">
-            <Button
-              type="link"
-              danger
-              size="small"
-              className="font-bold p-0"
-              onClick={() => handleRevoke(record.id, record.code)}
-            >
-              注销
-            </Button>
-          </PermissionGuard>
-        </Space>
-      ),
+            <Dropdown menu={{ items }} trigger={['click']}>
+              <Button 
+                type="text" 
+                size="small" 
+                className="flex items-center justify-center p-1 text-slate-400 hover:text-slate-750 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -311,7 +339,7 @@ export default function CodeTable({
         }}
         columns={columns} 
         rowKey="id" 
-        scroll={{ x: 1300, y: 'calc(100vh - 350px)' }}
+        scroll={{ x: 1300, y: 'calc(100vh - 440px)' }}
         pagination={{
           ...tableProps.pagination,
           style: { marginRight: 16, marginBottom: 16 }

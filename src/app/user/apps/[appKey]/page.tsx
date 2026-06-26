@@ -1,7 +1,7 @@
 'use client';
  
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Cpu, Power, Activity, ShieldCheck, RefreshCw, HardDrive, Lock, Unlock, Wifi, Battery, ListTodo, AlertTriangle, Gamepad2 } from 'lucide-react';
@@ -63,8 +63,22 @@ const getDiffDurationStr = (start: string | Date, end: string | Date | null) => 
 
 export default function UserDeviceListPage() {
   const router = useRouter();
+  const params = useParams();
   const { user, activeDevices, setDevicesList } = useUserStore();
   const code = user?.username; // 当前登录激活码
+
+  const [appName, setAppName] = useState('');
+  useEffect(() => {
+    if (!params.appKey) return;
+    api.get('/apps')
+      .then((res: any) => {
+        const currentApp = (res || []).find((a: any) => a.appKey === params.appKey);
+        if (currentApp) {
+          setAppName(currentApp.name);
+        }
+      })
+      .catch((err) => console.error('获取应用名失败:', err));
+  }, [params.appKey]);
 
   const [loading, setLoading] = useState(true);
   const devices = activeDevices as unknown as ClientDevice[];
@@ -274,7 +288,7 @@ export default function UserDeviceListPage() {
       <div className="border-b border-slate-200 dark:border-zinc-800/40 pb-3 flex items-center justify-between">
         <h1 className="text-lg font-black text-slate-800 dark:text-white tracking-wide flex items-center gap-2">
           <Cpu className="w-5 h-5 text-emerald-500 animate-pulse shrink-0" />
-          我的设备
+          我的设备{appName ? ` (${appName})` : ''}
         </h1>
       </div>
 

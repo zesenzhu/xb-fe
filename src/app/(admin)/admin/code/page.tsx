@@ -11,14 +11,18 @@ import LogTab from './_components/LogTab';
 import GenerateModal from './_components/GenerateModal';
 import AdjustModal from './_components/AdjustModal';
 import BatchAdjustModal from './_components/BatchAdjustModal';
+import BatchConfigModal from './_components/BatchConfigModal';
 import ImportModal from './_components/ImportModal';
 import { LicenseCode } from './_components/types';
 import DeviceLogModal from './_components/DeviceLogModal';
+import AppConfigModal from './_components/AppConfigModal';
 
 export default function CodePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isBatchAdjustModalOpen, setIsBatchAdjustModalOpen] = useState(false);
+  const [isBatchConfigModalOpen, setIsBatchConfigModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<LicenseCode | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -114,6 +118,7 @@ export default function CodePage() {
                   onClearSelection={() => setSelectedRowKeys([])}
                   onSuccess={refetch}
                   onBatchAdjustClick={() => setIsBatchAdjustModalOpen(true)}
+                  onBatchConfigClick={() => setIsBatchConfigModalOpen(true)}
                   onOpenImport={() => setIsImportModalOpen(true)}
                   onOpenGenerate={() => setIsModalOpen(true)}
                 />
@@ -126,6 +131,10 @@ export default function CodePage() {
                   onAdjustClick={(record) => {
                     setSelectedRecord(record);
                     setIsAdjustModalOpen(true);
+                  }}
+                  onConfigClick={(record) => {
+                    setSelectedRecord(record);
+                    setIsConfigModalOpen(true);
                   }}
                   onSuccess={refetch}
                   onDeviceClick={(deviceId, code) => {
@@ -170,6 +179,21 @@ export default function CodePage() {
         }}
       />
 
+      {/* 应用授权与细分功能权限配置弹窗 */}
+      <AppConfigModal
+        open={isConfigModalOpen}
+        selectedRecord={selectedRecord}
+        onCancel={() => {
+          setSelectedRecord(null);
+          setIsConfigModalOpen(false);
+        }}
+        onSuccess={() => {
+          setSelectedRecord(null);
+          setIsConfigModalOpen(false);
+          refetch();
+        }}
+      />
+
       {/* 批量时长微调弹窗 */}
       <BatchAdjustModal
         open={isBatchAdjustModalOpen}
@@ -177,6 +201,18 @@ export default function CodePage() {
         onCancel={() => setIsBatchAdjustModalOpen(false)}
         onSuccess={() => {
           setIsBatchAdjustModalOpen(false);
+          setSelectedRowKeys([]);
+          refetch();
+        }}
+      />
+
+      {/* 批量授权应用与权限弹窗 */}
+      <BatchConfigModal
+        open={isBatchConfigModalOpen}
+        selectedRowKeys={selectedRowKeys}
+        onCancel={() => setIsBatchConfigModalOpen(false)}
+        onSuccess={() => {
+          setIsBatchConfigModalOpen(false);
           setSelectedRowKeys([]);
           refetch();
         }}

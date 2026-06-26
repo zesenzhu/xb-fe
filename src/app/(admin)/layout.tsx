@@ -25,6 +25,7 @@ import {
   Terminal,
   Clock,
   Settings as SettingsIcon,
+  Gamepad2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +54,7 @@ const menuItems: MenuItem[] = [
   { name: '系统仪表盘', path: '/admin/dashboard', icon: LayoutDashboard },
   { name: '用户管理', path: '/admin/user', icon: Users, permission: 'user:list' },
   { name: '角色权限', path: '/admin/role', icon: ShieldAlert, permission: 'role:list' },
+  { name: '应用配置', path: '/admin/app', icon: Gamepad2, permission: 'code:list' },
   { name: '激活码管理', path: '/admin/code', icon: KeyRound, permission: 'code:list' },
   { name: '脚本运行日志', path: '/admin/log', icon: FileCode2, permission: 'log:list' },
   { name: 'MQTT设备监控', path: '/admin/device', icon: Cpu, permission: 'device:list' },

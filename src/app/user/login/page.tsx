@@ -55,7 +55,8 @@ function UserLoginForm() {
       );
       toast.success('激活登录成功！');
       
-      const redirectUrl = searchParams.get('redirect') || '/user';
+      const dashboardPath = response.user.app?.dashboardPath || '/user/apps';
+      const redirectUrl = searchParams.get('redirect') || dashboardPath;
       router.push(redirectUrl);
     } catch (error: any) {
       toast.error(error.message || '激活登录失败，请检查您的注册码！');

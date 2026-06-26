@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Input, Button, Select, DatePicker, Modal, message } from 'antd';
+import { Input, Button, Select, DatePicker, Modal, message, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
 import { Upload, Plus, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
 import { api } from '@/lib/axios';
@@ -16,6 +17,7 @@ export interface CodeFilterProps {
   onClearSelection: () => void;
   onSuccess: () => void;
   onBatchAdjustClick: () => void;
+  onBatchConfigClick: () => void;
   onOpenImport: () => void;
   onOpenGenerate: () => void;
 }
@@ -29,10 +31,12 @@ export default function CodeFilter({
   onClearSelection,
   onSuccess,
   onBatchAdjustClick,
+  onBatchConfigClick,
   onOpenImport,
   onOpenGenerate,
 }: CodeFilterProps) {
   const [expanded, setExpanded] = useState(false);
+  const hasSelected = selectedRowKeys.length > 0;
 
   // 批量修改启用状态
   const handleBatchStatusChange = async (status: 'active' | 'disabled') => {
@@ -75,6 +79,40 @@ export default function CodeFilter({
         }
       },
     });
+  };
+
+  const batchMenuProps: MenuProps = {
+    items: [
+      {
+        key: 'config',
+        label: '批量授权应用',
+        onClick: onBatchConfigClick,
+      },
+      {
+        key: 'active',
+        label: '批量启用激活码',
+        onClick: () => handleBatchStatusChange('active'),
+      },
+      {
+        key: 'disabled',
+        label: '批量禁用激活码',
+        onClick: () => handleBatchStatusChange('disabled'),
+      },
+      {
+        key: 'adjust',
+        label: '批量微调时长',
+        onClick: onBatchAdjustClick,
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'delete',
+        label: '批量注销销毁',
+        danger: true,
+        onClick: handleBatchDelete,
+      },
+    ],
   };
 
   return (
@@ -218,57 +256,19 @@ export default function CodeFilter({
             </Button>
           </PermissionGuard>
 
-          {/* 批量启用 */}
-          <Button 
-            disabled={selectedRowKeys.length === 0}
-            onClick={() => handleBatchStatusChange('active')} 
-            className={`text-xs font-bold h-9 px-3 rounded-lg transition-all ${
-              selectedRowKeys.length > 0 
-                ? 'border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer' 
-                : 'border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-600 bg-slate-50/50 dark:bg-zinc-950/10'
-            }`}
-          >
-            批量启用
-          </Button>
-
-          {/* 批量禁用 */}
-          <Button 
-            disabled={selectedRowKeys.length === 0}
-            onClick={() => handleBatchStatusChange('disabled')} 
-            className={`text-xs font-bold h-9 px-3 rounded-lg transition-all ${
-              selectedRowKeys.length > 0 
-                ? 'border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer' 
-                : 'border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-600 bg-slate-50/50 dark:bg-zinc-950/10'
-            }`}
-          >
-            批量禁用
-          </Button>
-
-          {/* 批量微调 */}
-          <Button 
-            disabled={selectedRowKeys.length === 0}
-            onClick={onBatchAdjustClick} 
-            className={`text-xs font-bold h-9 px-3 rounded-lg transition-all ${
-              selectedRowKeys.length > 0 
-                ? 'border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer' 
-                : 'border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-600 bg-slate-50/50 dark:bg-zinc-950/10'
-            }`}
-          >
-            批量微调
-          </Button>
-
-          {/* 批量注销 */}
-          <PermissionGuard permission="code:delete">
-            <Button 
-              danger 
-              type={selectedRowKeys.length > 0 ? "primary" : "default"}
-              disabled={selectedRowKeys.length === 0}
-              onClick={handleBatchDelete} 
-              className="text-xs font-bold h-9 px-3 rounded-lg"
+          {/* 批量操作 Dropdown */}
+          <Dropdown menu={batchMenuProps} disabled={!hasSelected} trigger={['click']}>
+            <Button
+              className={`text-xs font-bold h-9 px-3 rounded-lg transition-all flex items-center gap-1 ${
+                hasSelected
+                  ? 'border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer'
+                  : 'border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-600 bg-slate-50/50 dark:bg-zinc-950/10'
+              }`}
             >
-              批量注销
+              <span>批量操作</span>
+              <ChevronDown className="w-3.5 h-3.5" />
             </Button>
-          </PermissionGuard>
+          </Dropdown>
 
           <div className="w-px h-4 bg-slate-200 dark:bg-zinc-850 mx-1" />
 

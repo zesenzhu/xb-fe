@@ -15,4 +15,6 @@ export interface LicenseCode {
   expiresAt: string | null;
   createdAt: string;
   remark: string | null;
+  appId?: string | null;
+  allowedFeatures?: string[];
 }

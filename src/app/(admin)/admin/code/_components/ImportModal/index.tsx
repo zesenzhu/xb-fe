@@ -1,7 +1,5 @@
-'use client';
-
-import React, { useState } from 'react';
-import { Modal, Button, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Modal, Button, message, Select, Checkbox, InputNumber } from 'antd';
 import { FileSpreadsheet, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import './style.scss';
@@ -21,6 +19,50 @@ export default function ImportModal({
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [importResult, setImportResult] = useState<{ createdCount: number; updatedCount: number; message: string } | null>(null);
+
+  interface AppFeature {
+    name: string;
+    code: string;
+  }
+  interface AppItem {
+    id: string;
+    name: string;
+    appKey: string;
+    features?: AppFeature[];
+  }
+  const [apps, setApps] = useState<AppItem[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string | undefined>(undefined);
+  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
+  const [maxActivations, setMaxActivations] = useState<number>(1);
+  const [statusMode, setStatusMode] = useState<'file' | 'active' | 'disabled'>('file');
+
+  useEffect(() => {
+    if (open) {
+      api.get('/apps')
+        .then((res: unknown) => {
+          setApps((res as AppItem[]) || []);
+        })
+        .catch((err: any) => {
+          message.error(err.message || '拉取应用列表失败');
+        });
+    }
+  }, [open]);
+
+  const handleAppChange = (val: string) => {
+    setSelectedAppId(val || undefined);
+    if (val) {
+      const selectedApp = apps.find(a => a.id === val);
+      if (selectedApp && selectedApp.features) {
+        setAllowedFeatures(selectedApp.features.map((f: AppFeature) => f.code));
+      } else {
+        setAllowedFeatures([]);
+      }
+    } else {
+      setAllowedFeatures([]);
+    }
+  };
+
+
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -62,6 +104,13 @@ export default function ImportModal({
     setImporting(true);
     const formData = new FormData();
     formData.append('file', file);
+    if (selectedAppId) {
+      formData.append('appId', selectedAppId);
+      formData.append('allowedFeatures', JSON.stringify(allowedFeatures));
+    }
+    formData.append('maxActivations', String(maxActivations));
+    formData.append('statusMode', statusMode);
+
     try {
       const res: any = await api.post('/register-codes/import', formData, {
         headers: {
@@ -85,9 +134,14 @@ export default function ImportModal({
     if (!importing) {
       setFile(null);
       setImportResult(null);
+      setSelectedAppId(undefined);
+      setAllowedFeatures([]);
+      setMaxActivations(1);
+      setStatusMode('file');
       onCancel();
     }
   };
+
 
   return (
     <Modal
@@ -116,6 +170,97 @@ export default function ImportModal({
                 <p className="mt-0.5">3. 导入的已激活老卡状态将设为使用中，并会清空绑定设备，以允许设备重新连接时首次绑定。</p>
               </div>
             </div>
+
+            <div className="bg-slate-50 dark:bg-zinc-950 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-3">
+              <div className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                指定导入后绑定的应用（默认作为通用卡密）：
+              </div>
+              {apps.length === 0 ? (
+                <div className="text-xs text-amber-500 bg-amber-500/10 p-2.5 rounded border border-amber-500/20 leading-relaxed">
+                  ⚠️ 当前系统暂无可用应用，导入的注册码将默认自动作为通用型卡密。如需绑定，请前往 <a href="/admin/app" target="_blank" className="underline font-bold text-indigo-550 hover:text-indigo-400">应用管理</a> 新建。
+                </div>
+              ) : (
+                <Select
+                  className="w-full"
+                  placeholder="选择要绑定的游戏应用 (选填)"
+                  allowClear
+                  value={selectedAppId}
+                  onChange={handleAppChange}
+                  options={[
+                    { value: '', label: '通用型卡密 (不绑定特定应用)' },
+                    ...apps.map(a => ({ value: a.id, label: `${a.name} (${a.appKey})` }))
+                  ]}
+                />
+              )}
+            </div>
+
+            {selectedAppId && (() => {
+              const selectedApp = apps.find(a => a.id === selectedAppId);
+              const appFeatures = selectedApp?.features || [];
+              if (appFeatures.length === 0) return null;
+              return (
+                <div className="bg-slate-50 dark:bg-zinc-950 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center justify-between">
+                    <span>分配导入卡密的功能权限限制 (默认全选)：</span>
+                    <Checkbox
+                      checked={allowedFeatures.length === appFeatures.length}
+                      indeterminate={allowedFeatures.length > 0 && allowedFeatures.length < appFeatures.length}
+                      className="text-xs font-semibold"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAllowedFeatures(appFeatures.map((f: AppFeature) => f.code));
+                        } else {
+                          setAllowedFeatures([]);
+                        }
+                      }}
+                    >
+                      全选
+                    </Checkbox>
+                  </div>
+                  <div className="border-t border-slate-200/50 dark:border-zinc-800/50 pt-2">
+                    <Checkbox.Group
+                      className="flex flex-wrap gap-x-4 gap-y-2 mt-1 w-full"
+                      options={appFeatures.map((f: AppFeature) => ({ label: f.name, value: f.code }))}
+                      value={allowedFeatures}
+                      onChange={(checkedValues) => setAllowedFeatures(checkedValues as string[])}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="bg-slate-50 dark:bg-zinc-950 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                    最大设备在线限制 (台)：
+                  </div>
+                  <InputNumber
+                    min={1}
+                    max={9999}
+                    value={maxActivations}
+                    onChange={(val) => setMaxActivations(val || 1)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                    导入后状态覆写：
+                  </div>
+                  <Select
+                    className="w-full"
+                    value={statusMode}
+                    onChange={(val) => setStatusMode(val)}
+                    options={[
+                      { value: 'file', label: '跟随文件 (默认)' },
+                      { value: 'active', label: '强制启用激活' },
+                      { value: 'disabled', label: '强制禁用作废' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
 
             {!file ? (
               <div 
@@ -223,6 +368,10 @@ export default function ImportModal({
                 onClick={() => {
                   setFile(null);
                   setImportResult(null);
+                  setSelectedAppId(undefined);
+                  setAllowedFeatures([]);
+                  setMaxActivations(1);
+                  setStatusMode('file');
                   onCancel();
                 }}
               >

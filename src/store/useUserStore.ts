@@ -16,6 +16,13 @@ export interface UserProfile {
   };
   deviceId?: string;
   expireTime?: string;
+  app?: {
+    id: string;
+    name: string;
+    appKey: string;
+    dashboardPath: string;
+  } | null;
+  allowedFeatures?: string[];
 }
 
 // 物理设备状态定义
