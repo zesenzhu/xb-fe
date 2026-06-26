@@ -380,56 +380,56 @@ export default function AdminAppConfigPage() {
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <Label htmlFor="appName" className="text-xs font-bold text-zinc-400">应用/游戏名称</Label>
+                <Label htmlFor="appName" className="text-xs font-bold text-slate-500 dark:text-zinc-400">应用/游戏名称</Label>
                 <Input
                   id="appName"
                   placeholder="例如：天龙八部手游辅助"
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
-                  className="bg-zinc-950/40 border-zinc-800 dark:text-white"
+                  className="bg-slate-50 dark:bg-zinc-950/40 border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white focus-visible:ring-indigo-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="appKey" className="text-xs font-bold text-zinc-400">应用唯一标识 (AppKey)</Label>
+                <Label htmlFor="appKey" className="text-xs font-bold text-slate-500 dark:text-zinc-400">应用唯一标识 (AppKey)</Label>
                 <Input
                   id="appKey"
                   placeholder="例如：game_tlbb (唯一硬匹配字符)"
                   value={appKey}
                   onChange={(e) => setAppKey(e.target.value)}
                   disabled={!!editingApp} // AppKey 不允许后期修改，防止关联逻辑崩塌
-                  className="bg-zinc-950/40 border-zinc-800 dark:text-white font-mono"
+                  className="bg-slate-50 dark:bg-zinc-950/40 border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white focus-visible:ring-indigo-500 font-mono disabled:opacity-60"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="appDashboardPath" className="text-xs font-bold text-zinc-400">跳转界面/路由 (DashboardPath)</Label>
+                <Label htmlFor="appDashboardPath" className="text-xs font-bold text-slate-500 dark:text-zinc-400">跳转界面/路由 (DashboardPath)</Label>
                 <select
                   id="appDashboardPath"
                   value={appDashboardPath}
                   onChange={(e) => setAppDashboardPath(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white font-medium cursor-pointer"
+                  className="flex h-10 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 text-slate-800 dark:text-white font-medium cursor-pointer"
                 >
-                  <option value="" className="bg-zinc-900 text-zinc-300">默认系统动态匹配 ( /user/apps/[AppKey] )</option>
-                  <option value="/user/apps/frxxzrjp" className="bg-zinc-900 text-zinc-300">凡人修仙传:人界篇 物理专属大屏 ( /user/apps/frxxzrjp )</option>
+                  <option value="" className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-300">默认系统动态匹配 ( /user/apps/[AppKey] )</option>
+                  <option value="/user/apps/frxxzrjp" className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-300">凡人修仙传:人界篇 物理专属大屏 ( /user/apps/frxxzrjp )</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="appDesc" className="text-xs font-bold text-zinc-400">应用描述</Label>
+                <Label htmlFor="appDesc" className="text-xs font-bold text-slate-500 dark:text-zinc-400">应用描述</Label>
                 <textarea
                   id="appDesc"
                   placeholder="简单记录此应用所服务的游戏包与控制台预期作用..."
                   value={appDesc}
                   onChange={(e) => setAppDesc(e.target.value)}
-                  className="flex min-h-[80px] w-full rounded-md border border-zinc-850 bg-zinc-950/40 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white"
+                  className="flex min-h-[80px] w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 text-slate-800 dark:text-white"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-zinc-400">启用状态</Label>
+                <Label className="text-xs font-bold text-slate-500 dark:text-zinc-400">启用状态</Label>
                 <div className="flex items-center gap-6 mt-1 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-zinc-300">
                     <input
                       type="radio"
                       name="appStatus"
@@ -440,7 +440,7 @@ export default function AdminAppConfigPage() {
                     />
                     <span>正常启用</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer font-bold">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-zinc-300">
                     <input
                       type="radio"
                       name="appStatus"
@@ -585,36 +585,36 @@ export default function AdminAppConfigPage() {
 
             <div className="space-y-4 py-3">
               <div className="space-y-1.5">
-                <Label htmlFor="featName" className="text-[11px] font-bold text-zinc-400">功能名称</Label>
+                <Label htmlFor="featName" className="text-[11px] font-bold text-slate-500 dark:text-zinc-400">功能名称</Label>
                 <Input
                   id="featName"
                   placeholder="例如：自动挖矿"
                   value={featName}
                   onChange={(e) => setFeatName(e.target.value)}
-                  className="bg-zinc-950/40 border-zinc-800 text-xs dark:text-white"
+                  className="bg-slate-50 dark:bg-zinc-950/40 border-slate-200 dark:border-zinc-800 text-xs text-slate-800 dark:text-white focus-visible:ring-indigo-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="featCode" className="text-[11px] font-bold text-zinc-400">功能安全标识 (Code)</Label>
+                <Label htmlFor="featCode" className="text-[11px] font-bold text-slate-500 dark:text-zinc-400">功能安全标识 (Code)</Label>
                 <Input
                   id="featCode"
                   placeholder="例如：auto_mining"
                   value={featCode}
                   onChange={(e) => setFeatCode(e.target.value)}
                   disabled={!!editingFeature} // 标识 Code 不允许修改
-                  className="bg-zinc-950/40 border-zinc-800 text-xs dark:text-white font-mono"
+                  className="bg-slate-50 dark:bg-zinc-950/40 border-slate-200 dark:border-zinc-800 text-xs text-slate-800 dark:text-white focus-visible:ring-indigo-500 font-mono disabled:opacity-60"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="featDesc" className="text-[11px] font-bold text-zinc-400">功能描述</Label>
+                <Label htmlFor="featDesc" className="text-[11px] font-bold text-slate-500 dark:text-zinc-400">功能描述</Label>
                 <textarea
                   id="featDesc"
                   placeholder="简单说明这个功能限制或赋予客户端的行为..."
                   value={featDesc}
                   onChange={(e) => setFeatDesc(e.target.value)}
-                  className="flex min-h-[60px] w-full rounded-md border border-zinc-850 bg-zinc-950/40 px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white"
+                  className="flex min-h-[60px] w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/40 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 text-slate-800 dark:text-white"
                 />
               </div>
             </div>
