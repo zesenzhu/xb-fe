@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/components/layout/Providers";
+import PWARegister from "@/app/_components/PWARegister";
 
 export const metadata: Metadata = {
   title: "小宝JS",
@@ -19,6 +20,7 @@ export default function RootLayout({
       suppressHydrationWarning // 允许 Next/AntD 混合渲染的主题属性差异
     >
       <body className="min-h-full flex flex-col antialiased">
+        <PWARegister />
         <Providers>{children}</Providers>
       </body>
     </html>
