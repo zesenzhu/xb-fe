@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Cpu, ShieldCheck, Lock, Unlock, Mail, ListTodo } from 'lucide-react';
+import { Cpu, ShieldCheck, Lock, Unlock, Mail, ListTodo, Bell, HelpCircle, Smartphone, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -62,6 +62,105 @@ export default function UserSettingsPage() {
   // 【新增】防多开防共享配置状态
   const [configPreventDuplicate, setConfigPreventDuplicate] = useState(false);
   const [configDuplicateAction, setConfigDuplicateAction] = useState<'kick_new' | 'kick_old'>('kick_new');
+
+  // 【新增】PWA 桌面推送通知状态
+  const [isPushSupported, setIsPushSupported] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+  // 转换 VAPID 公钥为 Uint8Array
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // 检测桌面推送订阅状态
+  const checkPushSubscription = async () => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+      setIsPushSupported(true);
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        setIsSubscribed(!!sub);
+        
+        if (Notification.permission === 'denied') {
+          setShowGuide(true);
+        }
+      } catch (err) {
+        console.error('检测推送订阅失败:', err);
+      }
+    }
+  };
+
+  // 切换桌面推送
+  const handleTogglePush = async (checked: boolean) => {
+    if (!isPushSupported) {
+      toast.error('当前浏览器或系统不支持 PWA 桌面推送通知');
+      return;
+    }
+
+    setIsPushLoading(true);
+    if (checked) {
+      // 申请权限
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setIsSubscribed(false);
+        setShowGuide(true);
+        toast.error('您拒绝了通知权限，请按照下方指引重新允许');
+        setIsPushLoading(false);
+        return;
+      }
+
+      setShowGuide(false);
+      try {
+        // 从后端获取 VAPID 公钥
+        const res = await api.get<any, any>('/register-codes/vapid-public-key');
+        const publicKey = res.publicKey || (res as any).data?.publicKey;
+        
+        // 订阅推送
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+
+        // 提交至后端
+        await api.post('/register-codes/subscribe-push', { code, subscription });
+        setIsSubscribed(true);
+        toast.success('🎉 成功为该设备订阅此浏览器的桌面通知气泡！');
+      } catch (err) {
+        console.error('订阅推送失败:', err);
+        toast.error('启用桌面推送失败，请刷新页面后重试');
+      }
+    } else {
+      // 取消订阅
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          await api.post('/register-codes/unsubscribe-push', { code, endpoint: sub.endpoint });
+        }
+        setIsSubscribed(false);
+        toast.success('已停用此浏览器的桌面通知接收');
+      } catch (err) {
+        console.error('注销推送失败:', err);
+        toast.error('停用桌面推送失败');
+      }
+    }
+    setIsPushLoading(false);
+  };
 
   // 历史记录与黑名单状态
   const [historyList, setHistoryList] = useState<AuditHistory[]>([]);
@@ -133,6 +232,7 @@ export default function UserSettingsPage() {
     let active = true;
 
     if (activeTab === 'alertConfig') {
+      checkPushSubscription();
       api.get<unknown, AlertConfigResponse>(`/register-codes/my-alert?code=${code}`)
         .then((data) => {
           if (!active) return;
@@ -214,8 +314,8 @@ export default function UserSettingsPage() {
                 : "text-slate-600 dark:text-zinc-400 hover:text-slate-850 dark:hover:text-zinc-200"
             )}
           >
-            <Mail className="w-3.5 h-3.5 text-indigo-500" />
-            邮件订阅设置
+            <Bell className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+            警报与通知中心
           </button>
           <button
             onClick={() => setActiveTab('historyBlacklist')}
@@ -232,19 +332,19 @@ export default function UserSettingsPage() {
         </div>
       </div>
 
-      {/* Tab 2: 邮件订阅设置 */}
+      {/* Tab 2: 警报与通知中心 */}
       {activeTab === 'alertConfig' && (
         <Card className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm overflow-hidden max-w-xl mx-auto">
           <CardHeader className="border-b border-slate-100 dark:border-zinc-800/80 pb-4">
             <CardTitle className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Mail className="w-4 h-4 text-indigo-500" />
-              异常警报邮件推送配置
+              <Bell className="w-4 h-4 text-emerald-500" />
+              设备异常警报推送中心
             </CardTitle>
             <CardDescription className="text-xs text-slate-400 dark:text-zinc-500 mt-1">
-              为您的卡密绑定接收邮箱，当挂机设备出现黑屏死机、闪退桌面或VPN断开等风险时发送通知。
+              针对挂机设备死机、报错、断开 VPN 等异常状况，提供多通道实时通知守护。
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5 pt-5 text-xs">
+          <CardContent className="space-y-6 pt-5 text-xs">
             
             {/* 卡密免输显示 */}
             <div className="flex flex-col gap-1.5">
@@ -254,23 +354,101 @@ export default function UserSettingsPage() {
               </div>
             </div>
 
-            {/* 邮箱输入框 */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">报警接收邮箱 (支持多个，使用分号分隔)</label>
-              <input
-                type="text"
-                placeholder="例如: yourname@qq.com; oncall@company.com"
-                value={configEmail}
-                onChange={(e) => setConfigEmail(e.target.value.trim())}
-                className="w-full px-3 py-2 text-xs text-slate-800 dark:text-zinc-100 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:border-emerald-500"
-              />
+            {/* 通道一：邮件通知 */}
+            <div className="p-4 rounded-xl border border-slate-200/60 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-zinc-200">通道 1：邮件报警通知</p>
+                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">当发生异常时，向绑定的邮箱发送警报邮件</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5 pt-1">
+                <input
+                  type="text"
+                  placeholder="请输入您的报警接收邮箱，多个用分号(;)分隔"
+                  value={configEmail}
+                  onChange={(e) => setConfigEmail(e.target.value.trim())}
+                  className="w-full px-3 py-2 text-xs text-slate-800 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850 rounded-lg focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* 通道二：PWA 浏览器桌面推送 */}
+            <div className="p-4 rounded-xl border border-slate-200/60 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-emerald-500" />
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-zinc-200">通道 2：此浏览器的桌面推送 (PWA)</p>
+                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">即使关闭了网页，也能通过系统通知栏弹出气泡警告</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={isSubscribed}
+                    disabled={isPushLoading || !isPushSupported}
+                    onChange={(e) => handleTogglePush(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 dark:bg-zinc-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-700 peer-checked:bg-emerald-500 peer-disabled:opacity-50"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-zinc-800/40 text-[10px]">
+                <span className="text-slate-400">当前浏览器订阅状态:</span>
+                <span className="font-bold flex items-center gap-1">
+                  {!isPushSupported ? (
+                    <span className="text-rose-500">🔴 此浏览器不支持 PWA 推送</span>
+                  ) : Notification.permission === 'denied' ? (
+                    <span className="text-rose-500">🔴 未授权通知 (已被拒绝)</span>
+                  ) : isSubscribed ? (
+                    <span className="text-emerald-500 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      🟢 已开启接收
+                    </span>
+                  ) : (
+                    <span className="text-slate-450 dark:text-zinc-500 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      ⚪ 未订阅桌面通知
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* 手动允许通知开启引导 */}
+              {(showGuide || !isSubscribed) && isPushSupported && (
+                <div className="mt-2 p-3 bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 rounded-lg text-slate-650 dark:text-zinc-400 space-y-2">
+                  <p className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    桌面通知无法开启？请参考以下指引：
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-[10px] leading-relaxed">
+                    <li>
+                      <strong>Windows / macOS / Chrome 用户：</strong>
+                      点击浏览器地址栏左侧的 <strong className="text-slate-700 dark:text-zinc-300">「锁 🔒」</strong> 图标或 <strong className="text-slate-700 dark:text-zinc-300">「设置 ⌥」</strong> 图标，找到“通知”并修改为“允许”。
+                    </li>
+                    <li>
+                      <strong>iOS (苹果手机) 用户：</strong>
+                      必须先在 Safari 浏览器中点击底部的 <strong className="text-indigo-500">「分享 📤」</strong> 按钮，选择 <strong className="text-indigo-500">「添加到主屏幕」</strong>。在桌面上打开添加到主屏幕的 App，再重新进入设置页面开启推送通知。
+                    </li>
+                    <li>
+                      <strong>Android (安卓手机) 用户：</strong>
+                      建议配合开启邮件报警通知，以在浏览器离线或休眠时获得更可靠的报警通知。
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* 订阅细粒度控制开关 */}
             <div className="flex flex-col gap-2 pt-2">
               <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                <ListTodo className="w-3.5 h-3.5" />
-                事件推送订阅开关
+                <ListTodo className="w-3.5 h-3.5 text-indigo-500" />
+                订阅触发事件细分开关
               </label>
               
               <div className="space-y-3 bg-slate-50/50 dark:bg-zinc-950/20 p-4 rounded-xl border border-slate-100 dark:border-zinc-900/60">

@@ -1,10 +1,10 @@
-import { MetadataRoute } from 'next';
+import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: '小宝修仙控制台',
-    short_name: '小宝控制',
-    description: '物理挂机设备大屏与卡密授权配置终端',
+    short_name: '小宝修仙',
+    description: '助手日志与配置终端',
     start_url: '/user/login', // 桌面快捷方式点开后的直达页面
     display: 'standalone', // 像原生独立应用窗口一样运行 (隐藏地址栏)
     orientation: 'any', // 支持屏幕旋转
@@ -24,5 +24,5 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable', // 适配操作系统异形裁剪图标
       },
     ],
-  };
+  }
 }

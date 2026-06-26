@@ -79,3 +79,62 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// 4. 监听后台 Web Push 推送事件
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.log('[Service Worker] Push event with no data');
+    return;
+  }
+
+  try {
+    const data = event.data.json();
+    const title = data.title || '系统通知';
+    const options = {
+      body: data.body || '',
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: data.badge || '/icons/icon-192x192.png',
+      vibrate: [200, 100, 200], // 震动反馈
+      data: data.data || {},
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  } catch (err) {
+    // 降级使用文本通知
+    const text = event.data.text();
+    event.waitUntil(
+      self.registration.showNotification('系统通知', {
+        body: text,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-192x192.png',
+      })
+    );
+  }
+});
+
+// 5. 监听通知气泡点击事件
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // 点击后自动关闭气泡
+
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? event.notification.data.url
+    : '/';
+
+  // 尝试聚焦或打开新窗口
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 如果网页已经打开，直接聚焦到该标签页
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // 否则，在 PWA 容器中打开新页面
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
