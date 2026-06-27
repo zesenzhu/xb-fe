@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge, Popover, Dropdown } from 'antd';
+import { Table, Button, Space, Tag, Modal, Switch, message, Tooltip, Badge, Popover, Dropdown, InputNumber } from 'antd';
 import type { MenuProps } from 'antd';
 import { Cpu, Clock, RefreshCw, ShieldAlert, Settings, MoreHorizontal } from 'lucide-react';
 import { PermissionGuard } from '@/components/business/PermissionGuard';
@@ -20,6 +20,66 @@ export interface CodeTableProps {
   onDeviceClick?: (deviceId: string, code: string) => void;
 }
 
+// 激活码最大设备绑定额度就地修改气泡编辑组件
+interface MaxActiveEditorProps {
+  record: LicenseCode;
+  onSuccess: () => void;
+  onVisibleChange?: (visible: boolean) => void;
+}
+
+const MaxActiveEditor = ({ record, onSuccess, onVisibleChange }: MaxActiveEditorProps) => {
+  const [value, setValue] = React.useState(record.maxActivations);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setValue(record.maxActivations);
+  }, [record.maxActivations]);
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (value < 1) {
+      message.error('最大绑定设备额度至少为 1 台！');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.patch(`/register-codes/${record.id}/adjust-max-active`, { maxActive: value });
+      message.success(`已成功调整注册码设备额度为 ${value} 台！`);
+      onVisibleChange?.(false);
+      onSuccess();
+    } catch (err: any) {
+      message.error(err.message || '调整设备额度失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 p-1.5 min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-slate-500 font-bold dark:text-zinc-400 shrink-0">设备限制：</span>
+        <InputNumber
+          min={1}
+          max={9999}
+          value={value}
+          onChange={(val) => val !== null && setValue(val)}
+          size="small"
+          className="w-20"
+        />
+      </div>
+      <Button
+        type="primary"
+        size="small"
+        loading={saving}
+        onClick={handleSave}
+        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded py-0.5"
+      >
+        保存额度
+      </Button>
+    </div>
+  );
+};
+
 export default function CodeTable({
   tableProps,
   selectedRowKeys,
@@ -29,6 +89,8 @@ export default function CodeTable({
   onSuccess,
   onDeviceClick,
 }: CodeTableProps) {
+  // 控制局部修改激活码设备绑定额度 Popover 的开启状态
+  const [popoverOpenId, setPopoverOpenId] = React.useState<string | null>(null);
 
   // 状态开关
   const handleStatusChange = async (record: LicenseCode, checked: boolean) => {
@@ -165,11 +227,34 @@ export default function CodeTable({
     {
       title: '设备额度',
       key: 'usage',
-      width: 100,
+      width: 120,
       render: (_: any, record: LicenseCode) => (
-        <span className="font-mono font-semibold text-xs text-slate-600 dark:text-zinc-400">
-          {record.currentActivations} / {record.maxActivations} 台
-        </span>
+        <Tooltip title="点击快速调整最大绑定设备额度">
+          <span>
+            <Popover
+              content={
+                <MaxActiveEditor
+                  record={record}
+                  onSuccess={onSuccess}
+                  onVisibleChange={(visible) => {
+                    if (!visible) setPopoverOpenId(null);
+                  }}
+                />
+              }
+              title={<span className="text-xs font-bold text-slate-700 dark:text-zinc-300">调整设备额度限制</span>}
+              trigger="click"
+              placement="right"
+              open={popoverOpenId === record.id}
+              onOpenChange={(open) => {
+                setPopoverOpenId(open ? record.id : null);
+              }}
+            >
+              <span className="font-mono font-semibold text-xs text-slate-600 dark:text-zinc-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 px-1 py-0.5 rounded transition-all active:scale-[0.98]">
+                {record.currentActivations} / <span className="text-indigo-600 dark:text-indigo-400 underline decoration-dashed font-bold">{record.maxActivations}</span> 台
+              </span>
+            </Popover>
+          </span>
+        </Tooltip>
       ),
     },
     {
@@ -275,6 +360,20 @@ export default function CodeTable({
               </span>
             ),
             onClick: () => onAdjustClick(record),
+          },
+          {
+            key: 'adjust-max-active',
+            label: (
+              <span className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-zinc-350">
+                <Settings className="w-3.5 h-3.5" />
+                调整额度
+              </span>
+            ),
+            onClick: () => {
+              setTimeout(() => {
+                setPopoverOpenId(record.id);
+              }, 100);
+            },
           },
           record.currentActivations > 0 ? {
             key: 'unbind',
