@@ -40,6 +40,16 @@ function UserLoginForm() {
     defaultValues: { code: '' },
   });
 
+  // 组件挂载时自动读取并填充最近一次成功的授权激活码以提升 UX 体验
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedCode = localStorage.getItem('last_license_code');
+      if (savedCode) {
+        licenseForm.setValue('code', savedCode);
+      }
+    }
+  }, [licenseForm]);
+
   // 处理注册码极速登录
   const onLicenseSubmit = async (values: LicenseFormValues) => {
     setLoading(true);
@@ -53,6 +63,12 @@ function UserLoginForm() {
         response.accessToken,
         response.refreshToken
       );
+      
+      // 登录成功，将授权码持久化保存，避免下次手打输入
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('last_license_code', values.code);
+      }
+
       toast.success('激活登录成功！');
       
       const dashboardPath = response.user.app?.dashboardPath || '/user/apps';
