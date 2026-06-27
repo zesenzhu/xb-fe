@@ -132,12 +132,22 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
           throw new Error('获取 VAPID 公钥为空，请检查后端配置或接口返回格式');
         }
         
-        // 6秒超时 ready 检查，防止在未就绪环境一直挂起
-        const reg = await withTimeout(
-          navigator.serviceWorker.ready,
-          6000,
-          'Service Worker 无法就绪，请尝试刷新页面。如果是在 iOS 上，请确保已添加至主屏幕并使用 HTTPS 访问。'
-        );
+        let reg: ServiceWorkerRegistration;
+        try {
+          const activeReg = await navigator.serviceWorker.getRegistration();
+          if (activeReg && activeReg.active) {
+            reg = activeReg;
+          } else {
+            reg = await navigator.serviceWorker.register('/sw.js');
+          }
+        } catch (e) {
+          console.warn('主动获取或注册 ServiceWorker 失败，尝试兜底 ready 监听:', e);
+          reg = await withTimeout(
+            navigator.serviceWorker.ready,
+            6000,
+            'Service Worker 无法就绪，请尝试刷新页面。如果是在 iOS 上，请确保已添加至主屏幕并使用 HTTPS 访问。'
+          );
+        }
         console.log('Service Worker 状态就绪:', reg);
 
         // 8秒超时订阅尝试，防止连接运营商推送服务无响应
