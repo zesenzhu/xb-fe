@@ -154,8 +154,8 @@ export default function ImportModal({
       open={open}
       onCancel={handleClose}
       footer={null}
-      destroyOnClose
-      maskClosable={!importing}
+      destroyOnHidden
+      mask={{ closable: !importing }}
       closable={!importing}
     >
       <div className="mt-4 space-y-4 import-modal-content">

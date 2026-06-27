@@ -61,7 +61,8 @@ export default function BatchAdjustModal({
         onCancel();
       }}
       footer={null}
-      destroyOnClose
+      forceRender
+      destroyOnHidden
     >
       <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-900/40 mb-4 text-xs text-amber-700 dark:text-amber-300 batch-adjust-warning">
         批量时长微调将**忽略其中的永久卡**，非永久卡的截止时间将在其原到期时间基础上进行累加或扣减。

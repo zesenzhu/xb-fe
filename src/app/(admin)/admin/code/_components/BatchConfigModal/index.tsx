@@ -83,7 +83,8 @@ export default function BatchConfigModal({
       open={open}
       onCancel={onCancel}
       footer={null}
-      destroyOnClose
+      forceRender
+      destroyOnHidden
       width={500}
     >
       <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3 rounded-lg border border-indigo-200 dark:border-indigo-900/40 mb-4 text-xs space-y-1">

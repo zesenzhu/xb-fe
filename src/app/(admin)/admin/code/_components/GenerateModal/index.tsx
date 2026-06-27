@@ -65,7 +65,7 @@ export default function GenerateModal({
         onCancel();
       }}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

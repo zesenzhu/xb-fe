@@ -219,7 +219,8 @@ export default function AdjustModal({
         onCancel();
       }}
       footer={null}
-      destroyOnClose
+      forceRender
+      destroyOnHidden
       width={780}
     >
       {selectedRecord && (

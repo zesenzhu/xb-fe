@@ -88,7 +88,8 @@ export default function AppConfigModal({
       open={open}
       onCancel={onCancel}
       footer={null}
-      destroyOnClose
+      forceRender
+      destroyOnHidden
       width={500}
     >
       {selectedRecord && (
