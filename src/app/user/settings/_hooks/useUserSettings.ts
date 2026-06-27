@@ -53,6 +53,24 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
     return outputArray;
   }, []);
 
+  // 辅助函数：Promise 超时包装，防止 Ready 等 API 永远 Pending 导致卡死
+  const withTimeout = useCallback(<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(errorMsg));
+      }, ms);
+      promise
+        .then((res) => {
+          clearTimeout(timer);
+          resolve(res);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }, []);
+
   // 检测桌面推送订阅状态
   const checkPushSubscription = useCallback(async () => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
@@ -72,6 +90,21 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
 
   // 切换桌面推送
   const handleTogglePush = useCallback(async (checked: boolean) => {
+    // 1. 检测是否为 iOS 且非主屏幕应用 (PWA Standalone) 模式，并予以友好拦截
+    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = typeof window !== 'undefined' && (
+      ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone) ||
+      window.matchMedia('(display-mode: standalone)').matches
+    );
+
+    if (isIOS && !isStandalone) {
+      toast.error(
+        '🍎 iOS 系统限制：请先在 Safari 浏览器中点击下方“分享”按钮，选择“添加到主屏幕”，然后从桌面图标打开此应用再启用桌面推送通知。',
+        { duration: 8000 }
+      );
+      return;
+    }
+
     if (!isPushSupported) {
       toast.error('当前浏览器或系统不支持 PWA 桌面推送通知');
       return;
@@ -99,12 +132,23 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
           throw new Error('获取 VAPID 公钥为空，请检查后端配置或接口返回格式');
         }
         
-        const reg = await navigator.serviceWorker.ready;
+        // 6秒超时 ready 检查，防止在未就绪环境一直挂起
+        const reg = await withTimeout(
+          navigator.serviceWorker.ready,
+          6000,
+          'Service Worker 无法就绪，请尝试刷新页面。如果是在 iOS 上，请确保已添加至主屏幕并使用 HTTPS 访问。'
+        );
         console.log('Service Worker 状态就绪:', reg);
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey)
-        });
+
+        // 8秒超时订阅尝试，防止连接运营商推送服务无响应
+        const subscription = await withTimeout(
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+          }),
+          8000,
+          '向推送服务发起订阅请求超时，请检查网络状况或通知权限设置。'
+        );
         console.log('PushManager 订阅成功:', subscription);
 
         await api.post('/register-codes/subscribe-push', { code, subscription });
@@ -122,7 +166,11 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
       }
     } else {
       try {
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await withTimeout(
+          navigator.serviceWorker.ready,
+          6000,
+          'Service Worker 准备超时'
+        );
         const sub = await reg.pushManager.getSubscription();
         if (sub) {
           await sub.unsubscribe();
@@ -136,7 +184,7 @@ export function useUserSettings(code: string | undefined, activeTab: 'alertConfi
       }
     }
     setIsPushLoading(false);
-  }, [code, isPushSupported, urlBase64ToUint8Array]);
+  }, [code, isPushSupported, urlBase64ToUint8Array, withTimeout]);
 
   const handleSaveAlertConfig = useCallback(async () => {
     if (!code) return;
