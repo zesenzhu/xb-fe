@@ -128,6 +128,19 @@ const DEBUG_API_LIST: DebugApiItem[] = [
       code: '123456',
       newPassword: 'newSecurePassword123'
     }, null, 2)
+  },
+  {
+    id: 'debug_test_push',
+    name: '发送测试桌面推送通知 (HTTP)',
+    category: 'HTTP',
+    method: 'POST',
+    url: '/debug/test-push',
+    description: '超级管理员手动触发向指定卡密订阅的浏览器或物理设备发送一条桌面气泡测试通知，用来确认订阅凭证和证书链路是否正常。',
+    defaultPayload: JSON.stringify({
+      code: 'XB-DEBUG-XXXXXX',
+      title: '🧪 小宝桌面通知测试',
+      body: '看到此红色警报气泡，说明您的 VAPID 证书、Web Push 以及 Service Worker 后台链路已全线畅通！'
+    }, null, 2)
   }
 ];
 
