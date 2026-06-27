@@ -57,18 +57,41 @@ export default function UserPortalLayout({
 
   const [mounted, setMounted] = useState(false)
   const [timeStr, setTimeStr] = useState('')
+  const [lastAppKey, setLastAppKey] = useState<string | null>(null);
+
+  // 挂载时读取本地缓存的最后活跃应用
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const key = localStorage.getItem('xb_last_app_key');
+      Promise.resolve().then(() => {
+        setLastAppKey(key);
+      });
+    }
+  }, []);
 
   const isInApp = pathname.startsWith('/user/apps/') && pathname !== '/user/apps';
   const appKey = isInApp ? pathname.split('/')[3] : null;
-  const showBackToLobby = !user?.app && isInApp;
 
-  const devicePath = user?.app?.dashboardPath || (appKey ? `/user/apps/${appKey}` : '/user/apps');
+  // 处于应用中时持续记录最后活跃的应用
+  useEffect(() => {
+    if (isInApp && appKey) {
+      localStorage.setItem('xb_last_app_key', appKey);
+      Promise.resolve().then(() => {
+        setLastAppKey(appKey);
+      });
+    }
+  }, [isInApp, appKey]);
+
+  const showBackToLobby = !user?.app && (isInApp || pathname === '/user/settings');
+
+  const activeApp = appKey || lastAppKey;
+  const devicePath = user?.app?.dashboardPath || (activeApp ? `/user/apps/${activeApp}` : '/user/apps');
   const navItems: NavItem[] = [];
 
   if (!user?.app) {
     // 通用激活码用户
-    if (isInApp && appKey) {
-      navItems.push({ name: '我的设备', path: `/user/apps/${appKey}`, icon: Cpu });
+    if (activeApp) {
+      navItems.push({ name: '我的设备', path: `/user/apps/${activeApp}`, icon: Cpu });
     } else {
       navItems.push({ name: '我的设备', path: '/user/apps', icon: Cpu });
     }

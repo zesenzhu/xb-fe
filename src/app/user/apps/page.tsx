@@ -161,22 +161,7 @@ export default function AppsPortalPage() {
 
       {/* 主体大屏区域 */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
-        {/* 头部精美横幅 */}
-        <div className="relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/40 p-8 md:p-12 shadow-2xl">
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-emerald-500/5 rounded-full blur-3xl" />
-          <div className="relative z-10 space-y-4 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
-              <Sparkles className="w-3.5 h-3.5" />
-              超级授权通道激活
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              游戏脚本控制中心大厅
-            </h1>
-            <p className="text-sm text-zinc-400 font-medium leading-relaxed">
-              您当前使用的是通用型授权码，已成功解锁本平台名下所有支持的游戏应用。请在下方选择对应的游戏控制大屏以对设备进行精确挂机与日志监控。
-            </p>
-          </div>
-        </div>
+
 
         {/* 应用卡片列表 */}
         <div className="space-y-6">
