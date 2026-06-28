@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { sidebarCollapsed, toggleSidebar, theme, toggleTheme } = useGlobalStore();
-  const { user, permissions, clearAuth, isAuthenticated } = useUserStore();
+  const { user, permissions, clearAuth, isAuthenticated, isHydrated } = useUserStore();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -90,14 +90,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => clearInterval(timer);
   }, []);
 
-  // 保证客户端完全挂载后再处理状态，防止 Hydration Error
+  // 保证客户端完全挂载，防止 Hydration Error
   useEffect(() => {
-    setMounted(true);
-    // 如果客户端显示未登录，直接跳登录页 (双重安全拦截)
+    Promise.resolve().then(() => {
+      setMounted(true);
+    });
+  }, []);
+
+  // 如果客户端显示未登录，直接跳登录页 (双重安全拦截)
+  useEffect(() => {
+    // 保护断点：如果 Zustand 解密状态尚未完全就绪，不进行鉴权拦截
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/admin/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isHydrated, isAuthenticated, router]);
 
   if (!mounted) {
     return <div className="h-screen w-screen bg-background" />;

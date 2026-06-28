@@ -95,6 +95,10 @@ interface UserState {
   subscribeLogs: (listener: (log: any) => void) => () => void;
   // 分发广播实时日志
   emitLog: (log: any) => void;
+  
+  // Zustand 数据解密反序列化脱水就绪标志位，用于在页面加载/更新时避免被路由误踢
+  isHydrated: boolean;
+  setHydrated: (val: boolean) => void;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -142,6 +146,8 @@ export const useUserStore = create<UserState>()(
       user: null,
       permissions: [],
       isAuthenticated: false,
+      isHydrated: false,
+      setHydrated: (val) => set({ isHydrated: val }),
       adminAccessToken: null,
       adminRefreshToken: null,
       clientAccessToken: null,
@@ -291,6 +297,13 @@ export const useUserStore = create<UserState>()(
     {
       name: 'user-storage', // 存储在 localStorage 中的键名
       storage: createJSONStorage(() => secureStorage), // 使用安全的对称加密引擎
+      onRehydrateStorage: () => {
+        return (state, error) => {
+          if (!error && state) {
+            state.setHydrated(true);
+          }
+        };
+      },
       partialize: (state) => ({
         user: state.user,
         permissions: state.permissions,

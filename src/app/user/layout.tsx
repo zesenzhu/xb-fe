@@ -47,6 +47,7 @@ export default function UserPortalLayout({
     user,
     clearAuth,
     isAuthenticated,
+    isHydrated,
     sseConnected,
     setSseConnected,
     handleDeviceEvent,
@@ -144,9 +145,17 @@ export default function UserPortalLayout({
     return () => clearInterval(interval)
   }, [])
 
+  // 保证客户端完全挂载，防止 Hydration Error
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setMounted(true)
+    })
+  }, [])
+
   // 1. 挂载时拉取初始基线设备列表，并开启全局多路混合 SSE 长连接
   useEffect(() => {
-    setMounted(true)
+    // 保护断点：如果 Zustand 解密状态尚未完全就绪，不进行鉴权拦截
+    if (!isHydrated) return;
 
     if (!isAuthenticated || !user?.username) {
       if (isAuthenticated) {
@@ -237,6 +246,7 @@ export default function UserPortalLayout({
     }
   }, [
     isAuthenticated,
+    isHydrated,
     user?.username,
     router,
     setSseConnected,

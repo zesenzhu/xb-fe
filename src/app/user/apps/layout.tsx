@@ -8,13 +8,16 @@ import { toast } from 'sonner';
 export default function AppsRouteGuardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated } = useUserStore();
+  const { user, isAuthenticated, isHydrated } = useUserStore();
   const [authorized, setAuthorized] = useState(false);
 
   const isGeneralUser = !user?.app; // 是否是通用卡密
   const userDashboard = user?.app?.dashboardPath; // 绑定应用时的路由路径，例如 "/user/apps/frxxzrjp"
 
   useEffect(() => {
+    // 保护断点：如果 Zustand 解密状态尚未完全就绪，不进行鉴权拦截
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.replace('/user/login');
       return;
@@ -22,7 +25,9 @@ export default function AppsRouteGuardLayout({ children }: { children: React.Rea
 
     // 1. 通用型激活码具有超级权限，豁免本防越权拦截器的阻断，可以直接查看任意专属应用大屏
     if (isGeneralUser) {
-      setAuthorized(true);
+      Promise.resolve().then(() => {
+        setAuthorized(true);
+      });
       return;
     }
 
@@ -34,8 +39,10 @@ export default function AppsRouteGuardLayout({ children }: { children: React.Rea
       return;
     }
 
-    setAuthorized(true);
-  }, [isAuthenticated, isGeneralUser, userDashboard, pathname, router]);
+    Promise.resolve().then(() => {
+      setAuthorized(true);
+    });
+  }, [isHydrated, isAuthenticated, isGeneralUser, userDashboard, pathname, router]);
 
   if (!authorized) {
     return (
