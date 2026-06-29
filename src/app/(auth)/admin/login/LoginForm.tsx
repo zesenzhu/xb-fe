@@ -134,11 +134,9 @@ export function LoginForm() {
       <div className="w-full max-w-md p-4 relative z-10">
         {/* 控制台精美 LOGO */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg border border-slate-700/50">
-            <span className="text-slate-950 font-black text-2xl">宝</span>
-          </div>
-          <h1 className="text-2xl font-black tracking-widest text-white">小宝JS</h1>
-          <p className="text-xs text-slate-400 font-medium">小宝JS智能后台管理系统</p>
+          <img src="/icons/icon-192x192.png" className="w-12 h-12 rounded-xl object-contain shadow-lg border border-slate-700/50" alt="小宝修仙 Logo" />
+          <h1 className="text-2xl font-black tracking-widest text-white">小宝修仙</h1>
+          <p className="text-xs text-slate-400 font-medium">小宝修仙智能后台管理系统</p>
         </div>
 
         {/* 磨砂玻璃拟物登录卡片 */}

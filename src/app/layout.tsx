@@ -4,8 +4,8 @@ import Providers from "@/components/layout/Providers";
 import PWARegister from "@/app/_components/PWARegister";
 
 export const metadata: Metadata = {
-  title: "小宝JS",
-  description: "小宝JS智能后台管理平台",
+  title: "小宝修仙",
+  description: "小宝修仙智能后台管理平台",
 };
 
 export default function RootLayout({

@@ -16,9 +16,9 @@ import {
   User as UserIcon,
   Wifi,
   WifiOff,
-  Sparkles,
   Settings,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { disconnectSocket } from '@/lib/socket'
@@ -58,49 +58,57 @@ export default function UserPortalLayout({
 
   const [mounted, setMounted] = useState(false)
   const [timeStr, setTimeStr] = useState('')
-  const [lastAppKey, setLastAppKey] = useState<string | null>(null);
+  const [lastAppKey, setLastAppKey] = useState<string | null>(null)
 
   // 挂载时读取本地缓存的最后活跃应用
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const key = localStorage.getItem('xb_last_app_key');
+      const key = localStorage.getItem('xb_last_app_key')
       Promise.resolve().then(() => {
-        setLastAppKey(key);
-      });
+        setLastAppKey(key)
+      })
     }
-  }, []);
+  }, [])
 
-  const isInApp = pathname.startsWith('/user/apps/') && pathname !== '/user/apps';
-  const appKey = isInApp ? pathname.split('/')[3] : null;
+  const isInApp =
+    pathname.startsWith('/user/apps/') && pathname !== '/user/apps'
+  const appKey = isInApp ? pathname.split('/')[3] : null
 
   // 处于应用中时持续记录最后活跃的应用
   useEffect(() => {
     if (isInApp && appKey) {
-      localStorage.setItem('xb_last_app_key', appKey);
+      localStorage.setItem('xb_last_app_key', appKey)
       Promise.resolve().then(() => {
-        setLastAppKey(appKey);
-      });
+        setLastAppKey(appKey)
+      })
     }
-  }, [isInApp, appKey]);
+  }, [isInApp, appKey])
 
-  const showBackToLobby = !user?.app && (isInApp || pathname === '/user/settings');
+  const showBackToLobby =
+    !user?.app && (isInApp || pathname === '/user/settings')
 
-  const activeApp = appKey || lastAppKey;
-  const devicePath = user?.app?.dashboardPath || (activeApp ? `/user/apps/${activeApp}` : '/user/apps');
-  const navItems: NavItem[] = [];
+  const activeApp = appKey || lastAppKey
+  const devicePath =
+    user?.app?.dashboardPath ||
+    (activeApp ? `/user/apps/${activeApp}` : '/user/apps')
+  const navItems: NavItem[] = []
 
   if (!user?.app) {
     // 通用激活码用户
     if (activeApp) {
-      navItems.push({ name: '我的设备', path: `/user/apps/${activeApp}`, icon: Cpu });
+      navItems.push({
+        name: '我的设备',
+        path: `/user/apps/${activeApp}`,
+        icon: Cpu,
+      })
     } else {
-      navItems.push({ name: '我的设备', path: '/user/apps', icon: Cpu });
+      navItems.push({ name: '我的设备', path: '/user/apps', icon: Cpu })
     }
   } else {
     // 专用激活码用户
-    navItems.push({ name: '我的设备', path: devicePath, icon: Cpu });
+    navItems.push({ name: '我的设备', path: devicePath, icon: Cpu })
   }
-  navItems.push({ name: '我的设置', path: '/user/settings', icon: Settings });
+  navItems.push({ name: '我的设置', path: '/user/settings', icon: Settings })
 
   // 格式化渲染剩余时间
   const renderRemainingTime = (expireTime?: string) => {
@@ -155,7 +163,7 @@ export default function UserPortalLayout({
   // 1. 挂载时拉取初始基线设备列表，并开启全局多路混合 SSE 长连接
   useEffect(() => {
     // 保护断点：如果 Zustand 解密状态尚未完全就绪，不进行鉴权拦截
-    if (!isHydrated) return;
+    if (!isHydrated) return
 
     if (!isAuthenticated || !user?.username) {
       if (isAuthenticated) {
@@ -256,8 +264,35 @@ export default function UserPortalLayout({
     updateUser,
   ])
 
-  if (!mounted) {
-    return <div className="h-screen w-screen bg-slate-950" />
+  if (!mounted || !isHydrated) {
+    return (
+      <div className="h-screen w-screen bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden select-none">
+        {/* 炫光偏向品牌翡翠绿的极光呼吸背景 */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+
+        {/* 中心品牌微动卡片 */}
+        <div className="flex flex-col items-center gap-6 relative z-10 scale-95 md:scale-100 transition-all duration-500">
+          <img
+            src="/icons/icon-192x192.png"
+            className="w-12 h-12 rounded-xl object-contain shadow-lg shadow-emerald-500/10 animate-bounce"
+            alt="小宝修仙 Logo"
+          />
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="text-lg font-black tracking-widest text-white uppercase">
+              小宝修仙
+            </h1>
+          </div>
+
+          {/* 发光毛玻璃旋转条 */}
+          <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800/80 px-4 py-2 rounded-full backdrop-blur-md shadow-xl mt-2">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+            <span className="text-[10px] font-mono text-zinc-400 tracking-wider uppercase">
+              加载中...
+            </span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // 排除登录页面与应用大厅页面的 Layout 嵌套渲染，它们采用自己独立的页面和展示结构
@@ -301,9 +336,11 @@ export default function UserPortalLayout({
               href="/user"
               className="flex items-center gap-2 font-bold tracking-widest text-slate-900 dark:text-white"
             >
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-                <Sparkles className="w-4 h-4 text-white dark:text-zinc-950 shrink-0" />
-              </div>
+              <img
+                src="/icons/icon-192x192.png"
+                className="w-8 h-8 rounded-lg object-contain shadow-md shrink-0"
+                alt="小宝修仙 Logo"
+              />
               <span className="text-sm font-black whitespace-nowrap bg-gradient-to-r from-slate-900 via-zinc-700 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent">
                 小宝修仙
               </span>
